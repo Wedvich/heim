@@ -1,0 +1,37 @@
+{
+  "$schema": "node_modules/turbo/schema.json",
+  "noUpdateNotifier": true,
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputLogs": "new-only"
+    },
+    "dev": {
+      "cache": false,
+      "dependsOn": [
+        "^build"
+      ],
+      "interactive": true,
+      "persistent": true
+    },
+    "lint": {
+      "outputLogs": "new-only"
+    },
+    "test": {
+      "outputLogs": "new-only"
+    },
+    "test:watch": {
+      "cache": false,
+      "interactive": true,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputLogs": "new-only"
+    }
+  }
+}

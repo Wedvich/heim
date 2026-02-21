@@ -3,6 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "true",
+    "dev": "true",
+    "lint": "true",
+    "test": "true",
+    "test:watch": "true",
+    "typecheck": "true"
+  },
   "dependencies": {
     "@heim/domain": "workspace:*"
   }
