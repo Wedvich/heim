@@ -9,6 +9,6 @@
     "lint": "true",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "typecheck": "true"
+    "typecheck": "tsgo --noEmit"
   }
 }

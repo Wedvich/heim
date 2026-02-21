@@ -6,13 +6,13 @@
 
 - [x] Initialize Yarn workspace monorepo with Turborepo
 - [x] Create package stubs: `@heim/domain`, `@heim/api`, `@heim/web`
-- [ ] Configure TypeScript (strict, project references)
-- [ ] Configure Vitest per package
+- [x] Configure TypeScript (strict, project references)
+- [x] Configure Vitest per package
 - [~] Configure oxlint + Lefthook (pre-commit: lint/format staged files, commit-msg: commitlint) _(Lefthook + commit-msg done; oxlint and pre-commit hook not yet added)_
 - [x] Configure commitlint with @commitlint/config-conventional
 - [ ] Set up @changesets/cli for monorepo release management
 - [ ] Set up Docker Compose (Postgres + API + Web)
-- [~] Set up GitHub Actions CI (lint, typecheck, test) _(workflow scaffolded with checkout only; lint/typecheck/test steps missing)_
+- [x] Set up GitHub Actions CI (typecheck, test)
 - [~] Create CLAUDE.md files at root and per package _(root done; per-package CLAUDE.md files missing)_
 - [x] Create `docs/` structure with architecture.md and plan.md
 - [~] Create `.claude/` with recap and review agents _(directory exists; recap and review agents missing)_

@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"erasableSyntaxOnly": true,
+		"esModuleInterop": true,
+		"exactOptionalPropertyTypes": true,
+		"forceConsistentCasingInFileNames": true,
+		"isolatedDeclarations": true,
+		"isolatedModules": true,
+		"declaration": true,
+		"declarationMap": true,
+		"jsx": "react-jsx",
+		"lib": ["esnext"],
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"target": "esnext",
+		"verbatimModuleSyntax": true
+	},
+	"exclude": ["node_modules"]
+}
