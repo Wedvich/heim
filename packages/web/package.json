@@ -1,0 +1,9 @@
+{
+  "name": "@heim/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@heim/domain": "workspace:*"
+  }
+}

@@ -213,6 +213,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@heim/api@workspace:packages/api":
+  version: 0.0.0-use.local
+  resolution: "@heim/api@workspace:packages/api"
+  dependencies:
+    "@heim/domain": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
+"@heim/domain@workspace:*, @heim/domain@workspace:packages/domain":
+  version: 0.0.0-use.local
+  resolution: "@heim/domain@workspace:packages/domain"
+  languageName: unknown
+  linkType: soft
+
+"@heim/web@workspace:packages/web":
+  version: 0.0.0-use.local
+  resolution: "@heim/web@workspace:packages/web"
+  dependencies:
+    "@heim/domain": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "ajv@npm:^8.11.0":
   version: 8.18.0
   resolution: "ajv@npm:8.18.0"
