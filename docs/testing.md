@@ -18,15 +18,15 @@ The bulk of tests are **integration tests** that exercise domain behavior throug
 ```
 packages/domain/tests/
 ├── auth/
-│   ├── user.ears.test.ts          # User aggregate behavior
-│   ├── tenant.ears.test.ts        # Tenant aggregate behavior
-│   ├── membership.ears.test.ts    # Membership behavior
-│   ├── login-flow.ears.test.ts    # Integration: full login scenarios
-│   └── policies.ears.test.ts      # ABAC policy evaluation
+│   ├── user.test.ts          # User aggregate behavior
+│   ├── tenant.test.ts        # Tenant aggregate behavior
+│   ├── membership.test.ts    # Membership behavior
+│   ├── login-flow.test.ts    # Integration: full login scenarios
+│   └── policies.test.ts      # ABAC policy evaluation
 └── event-store/
-    ├── append.ears.test.ts
-    ├── bitemporal.ears.test.ts
-    └── projections.ears.test.ts
+    ├── append.test.ts
+    ├── bitemporal.test.ts
+    └── projections.test.ts
 ```
 
 ## Dev Bypass for Testing
