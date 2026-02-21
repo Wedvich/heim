@@ -8,11 +8,11 @@
 - [x] Create package stubs: `@heim/domain`, `@heim/api`, `@heim/web`
 - [x] Configure TypeScript (strict, project references)
 - [x] Configure Vitest per package
-- [~] Configure oxlint + Lefthook (pre-commit: lint/format staged files, commit-msg: commitlint) _(Lefthook + commit-msg done; oxlint and pre-commit hook not yet added)_
+- [x] Configure oxlint + Lefthook (pre-commit: lint/format staged files, commit-msg: commitlint)
 - [x] Configure commitlint with @commitlint/config-conventional
 - [ ] Set up @changesets/cli for monorepo release management
 - [ ] Set up Docker Compose (Postgres + API + Web)
-- [x] Set up GitHub Actions CI (typecheck, test)
+- [x] Set up GitHub Actions CI (lint, typecheck, test)
 - [~] Create CLAUDE.md files at root and per package _(root done; per-package CLAUDE.md files missing)_
 - [x] Create `docs/` structure with architecture.md and plan.md
 - [~] Create `.claude/` with recap and review agents _(directory exists; recap and review agents missing)_
