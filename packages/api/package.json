@@ -5,16 +5,18 @@
   "type": "module",
   "scripts": {
     "build": "true",
-    "dev": "true",
+    "dev": "node --watch src/index.ts",
     "lint": "oxlint .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@heim/domain": "workspace:*"
+    "@heim/domain": "workspace:*",
+    "express": "^5.1.0"
   },
   "devDependencies": {
-    "@heim/infra": "workspace:*"
+    "@heim/infra": "workspace:*",
+    "@types/express": "^5.0.0"
   }
 }

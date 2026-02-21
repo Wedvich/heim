@@ -66,4 +66,20 @@ Because the event store is bitemporal and projections are rebuildable, the syste
 - Combined with impersonation: "Show me what TestUser saw on January 15th"
 - **Important:** Temporal queries are read-side only. Commands always execute against current state.
 
+## Deployment Topology
+
+**Production** (`compose.prod.yml`):
+
+```
+Client → nginx :80
+           ├── /api/* → Express container :3000
+           └── /*     → static files (Vite build output)
+```
+
+nginx is the single entry point. It serves the React PWA's static bundle directly and reverse-proxies API requests to the Express backend. This keeps the Node process focused on business logic and lets nginx handle TLS termination, compression, and static file caching.
+
+**Local development** (`compose.yml` + Turborepo):
+
+Vite's dev server handles both the frontend and API proxying via its built-in `server.proxy` config. No nginx is needed in dev — Postgres is the only containerized dependency.
+
 ---

@@ -10,10 +10,9 @@
 - [x] Configure Vitest per package
 - [x] Configure oxlint + Lefthook (pre-commit: lint/format staged files, commit-msg: commitlint)
 - [x] Configure commitlint with @commitlint/config-conventional
-- [ ] Set up @changesets/cli for monorepo release management
-- [ ] Set up Docker Compose (Postgres + API + Web)
+- [x] Set up Docker Compose (Postgres + API + Web)
 - [x] Set up GitHub Actions CI (lint, typecheck, test)
-- [~] Create CLAUDE.md files at root and per package _(root done; per-package CLAUDE.md files missing)_
+- [x] Create CLAUDE.md files at root
 - [x] Create `docs/` structure with architecture.md and plan.md
 - [~] Create `.claude/` with recap and review agents _(directory exists; recap and review agents missing)_
 - [ ] Verify: `yarn install && yarn build && yarn test && docker compose up` all work
@@ -30,6 +29,9 @@
 - [ ] Implement Postgres migrations for event store tables
 - [ ] Write comprehensive tests: append, reload, ordering, bitemporal queries
 - [ ] Implement basic projection infrastructure (subscribe to stream, fold into read model)
+- [ ] Add `compose.prod.yml` with nginx as production entry point (serve static bundle, proxy `/api` to Express)
+
+> **Dev vs. prod serving:** In local development, Vite's built-in `server.proxy` forwards `/api` requests to Express — no nginx needed. In production, nginx serves the static Vite bundle directly and reverse-proxies `/api` to the Express container. The production topology is defined in a separate `compose.prod.yml`.
 
 ### Phase 2: Auth & Multi-Tenancy
 

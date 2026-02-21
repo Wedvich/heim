@@ -24,10 +24,10 @@ jobs:
         run: yarn install --immutable
 
       - name: Lint
-        run: yarn turbo lint
+        run: yarn turbo lint --ui=stream
 
       - name: Typecheck
-        run: yarn turbo typecheck
+        run: yarn turbo typecheck --ui=stream
 
       - name: Test
-        run: yarn turbo test
+        run: yarn turbo test --ui=stream

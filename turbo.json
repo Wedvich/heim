@@ -1,9 +1,11 @@
 {
   "$schema": "node_modules/turbo/schema.json",
+  "ui": "tui",
   "noUpdateNotifier": true,
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "outputs": ["dist"],
       "outputLogs": "new-only"
     },
     "dev": {
@@ -18,6 +20,7 @@
     },
     "test": {
       "dependsOn": ["^build"],
+      "outputs": ["coverage"],
       "outputLogs": "new-only"
     },
     "test:watch": {

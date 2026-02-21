@@ -19,4 +19,5 @@
 | CI/CD              | GitHub Actions                                     | Public repo, free tier                                                           |
 | Containers         | Docker + Docker Compose                            | Postgres runs via Compose in `@heim/infra`; app code runs natively via Turborepo |
 | IaC (future)       | Pulumi (TypeScript)                                | Phase 2, replaces Compose for prod                                               |
+| Reverse proxy      | nginx                                              | Production only: serves static Vite bundle, proxies `/api` to Express            |
 | Auth               | JWT (access + refresh), Google OIDC + Apple ID     | Custom implementation, `jose` library for token handling                         |
