@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "true",
     "dev": "node --watch src/index.ts",
     "lint": "oxlint .",
     "test": "vitest run --coverage",

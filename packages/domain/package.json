@@ -4,8 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "true",
-    "dev": "true",
     "lint": "oxlint .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
