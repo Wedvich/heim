@@ -1,3 +1,14 @@
+pre-commit:
+  jobs:
+    - name: format staged files
+      run: yarn oxfmt {staged_files}
+      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
+      stage_fixed: true
+    - name: lint staged files
+      run: yarn oxlint --fix {staged_files}
+      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
+      stage_fixed: true
+
 commit-msg:
   commands:
     "lint commit message":
