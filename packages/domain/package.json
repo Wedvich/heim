@@ -6,7 +6,7 @@
   "scripts": {
     "build": "true",
     "dev": "true",
-    "lint": "true",
+    "lint": "oxlint .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit"

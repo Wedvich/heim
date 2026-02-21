@@ -1,17 +1,16 @@
 {
   "name": "heim",
-  "description": "Personal and family planning tool",
   "private": true,
+  "description": "Personal and family planning tool",
   "author": "Martin Wedvich <wedvich@gmail.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/Wedvich/heim"
   },
-  "packageManager": "yarn@4.12.0+sha512.f45ab632439a67f8bc759bf32ead036a1f413287b9042726b7cc4818b7b49e14e9423ba49b18f9e06ea4941c1ad062385b1d8760a8d5091a1a31e5f6219afca8",
-  "type": "module",
   "workspaces": [
     "packages/*"
   ],
+  "type": "module",
   "scripts": {
     "postinstall": "lefthook install"
   },
@@ -26,5 +25,6 @@
     "oxlint": "^1.48.0",
     "turbo": "^2.8.10",
     "vitest": "^4.0.18"
-  }
+  },
+  "packageManager": "yarn@4.12.0+sha512.f45ab632439a67f8bc759bf32ead036a1f413287b9042726b7cc4818b7b49e14e9423ba49b18f9e06ea4941c1ad062385b1d8760a8d5091a1a31e5f6219afca8"
 }
