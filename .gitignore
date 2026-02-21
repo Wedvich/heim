@@ -1,3 +1,4 @@
 .turbo
 .yarn/*
+coverage
 node_modules

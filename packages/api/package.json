@@ -7,8 +7,8 @@
     "build": "true",
     "dev": "true",
     "lint": "true",
-    "test": "true",
-    "test:watch": "true",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
     "typecheck": "true"
   },
   "dependencies": {
