@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@heim/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@heim/infra": "workspace:*"
   }
 }

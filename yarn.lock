@@ -435,12 +435,19 @@ __metadata:
   resolution: "@heim/api@workspace:packages/api"
   dependencies:
     "@heim/domain": "workspace:*"
+    "@heim/infra": "workspace:*"
   languageName: unknown
   linkType: soft
 
 "@heim/domain@workspace:*, @heim/domain@workspace:packages/domain":
   version: 0.0.0-use.local
   resolution: "@heim/domain@workspace:packages/domain"
+  languageName: unknown
+  linkType: soft
+
+"@heim/infra@workspace:*, @heim/infra@workspace:packages/infra":
+  version: 0.0.0-use.local
+  resolution: "@heim/infra@workspace:packages/infra"
   languageName: unknown
   linkType: soft
 

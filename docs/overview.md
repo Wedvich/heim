@@ -19,7 +19,6 @@ These are ideas for future development. They are listed here for architectural a
 - **Calendar Views** — unified calendar across all bounded contexts.
 - **Notification / Scheduler System** — abstract notification production with per-user delivery preferences (push, email, SMS). Background job system for automated reminders. Exact implementation TBD — design for extensibility, don't over-build early.
 
-
 ## 8. Claude Code Workflow
 
 ### CLAUDE.md Strategy

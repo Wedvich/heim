@@ -1,0 +1,13 @@
+{
+  "name": "@heim/infra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "true",
+    "dev": "docker compose up",
+    "lint": "true",
+    "test": "true",
+    "typecheck": "true"
+  }
+}

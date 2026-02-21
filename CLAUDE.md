@@ -1,5 +1,9 @@
 # Heim
 
+## Principles
+
+- Good developer experience and ergonomics is a very high priority.
+
 ## Source Control (Git)
 
 ### Commit
@@ -26,6 +30,13 @@ Filter to a specific package with `-F`:
 
     yarn turbo build -F @heim/api
     yarn turbo test -F @heim/domain
+
+### Infrastructure
+
+    yarn turbo dev                                 # Start everything (Postgres + API + Web)
+    yarn turbo dev -F @heim/api...                 # API + Postgres only
+    yarn turbo dev -F @heim/web                    # Web only (against remote API)
+    docker compose -f packages/infra/compose.yml down -v   # Wipe database
 
 ## Project Documentation
 
