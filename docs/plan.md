@@ -1,22 +1,5 @@
 ## Phased Implementation Plan
 
-### Phase 0: Repository Scaffolding
-
-**Goal:** Repo exists, builds, and has CI — but does nothing yet.
-
-- [x] Initialize Yarn workspace monorepo with Turborepo
-- [x] Create package stubs: `@heim/domain`, `@heim/api`, `@heim/web`
-- [x] Configure TypeScript (strict, project references)
-- [x] Configure Vitest per package
-- [x] Configure oxlint + Lefthook (pre-commit: lint/format staged files, commit-msg: commitlint)
-- [x] Configure commitlint with @commitlint/config-conventional
-- [x] Set up Docker Compose (Postgres + API + Web)
-- [x] Set up GitHub Actions CI (lint, typecheck, test)
-- [x] Create CLAUDE.md files at root
-- [x] Create `docs/` structure with architecture.md and plan.md
-- [~] Create `.claude/` with recap and review agents _(directory exists; recap and review agents missing)_
-- [ ] Verify: `yarn install && yarn build && yarn test && docker compose up` all work
-
 ### Phase 1: Event Store Foundation
 
 **Goal:** A working custom event store with bitemporal support.
