@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@heim/domain": "workspace:*",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "pg": "^8.19.0"
   },
   "devDependencies": {
     "@heim/infra": "workspace:*",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.18.0"
   }
 }

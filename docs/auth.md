@@ -48,15 +48,23 @@
           → NOT FOUND: create new User + Identity
      5. If no verified email:
         → create new User (no email) + Identity
-6. Issue JWT access token (short-lived) + refresh token
-7. Access token contains: userId, tenantId (if selected), actingUserId (if impersonating)
+6. Create session row in `sessions` table (opaque token, 32 bytes, base64url)
+7. Set HTTP-only cookie (`heim_sid`) with the session token
 ```
+
+## Session Management
+
+- **Storage**: Opaque session tokens stored in the `sessions` table (text PK, principal_id, tenant_id, created_at, expires_at).
+- **Cookie**: `heim_sid`, HTTP-only, `secure` in production, `sameSite: 'lax'`.
+- **`GET /api/auth/session`**: Returns the current principal, tenant, membership, and expiry. Used by the frontend to rehydrate auth state on load. Returns 401 if no valid session.
+- **In-memory cache**: Single-instance deployment uses a `Map` with 5-minute TTL to reduce DB lookups. Logout/revocation calls `invalidateSession()` to clear cache immediately.
+- **Logout**: Deletes the session row from the DB, clears the cookie, and invalidates the cache entry. No soft delete — history lives in `audit_log`.
 
 ## Dev Bypass Auth
 
 For local development and testing, a `DEV_AUTH_BYPASS=true` environment variable enables:
 
-- A `/dev/login` endpoint that accepts a `userId` and returns a JWT pair without OIDC
+- A `/dev/login` endpoint that accepts a `userId` and creates a session cookie without OIDC
 - Only available when `NODE_ENV=development`
 - Documented in CLAUDE.md so agents can use it for testing
 

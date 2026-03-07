@@ -88,6 +88,22 @@ Connects principals to external identity providers (Google, Apple).
 
 > **Threat model note:** The HMAC is unsalted. If `EMAIL_HMAC_KEY` is compromised, an attacker can precompute hashes for targeted email addresses and correlate identities across providers. At household scale (dozens of users), adding per-identity salts would make merge lookups require computing a candidate hash against every existing salt — negligible at this scale but architecturally complex. This is an accepted tradeoff. If the user base grows significantly or the threat model changes, migrate to salted hashes with an index on `(salt, email_hash)`.
 
+### `sessions`
+
+Server-side sessions for authenticated users. Each session is identified by an opaque crypto-random token stored in an HTTP-only cookie.
+
+| Column         | Type                   | Notes                                                                                       |
+| -------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
+| `id`           | text PK                | Opaque crypto-random token (32 bytes, base64url-encoded). Not UUID — must be unpredictable. |
+| `principal_id` | UUID FK → `principals` | Required                                                                                    |
+| `tenant_id`    | UUID FK → `tenants`    | Nullable. Active tenant for the session. Set on login or via tenant switch.                 |
+| `created_at`   | timestamptz            |                                                                                             |
+| `expires_at`   | timestamptz            | Required. Application enforces expiry on lookup.                                            |
+
+**Indexes:** on `principal_id` for "list/invalidate all sessions for a principal"; on `expires_at` for cleanup of expired sessions.
+
+No RLS — sessions are cross-tenant like `principals`, `identities`, and `crypto_keys`. Access control is application-layer. No soft delete — logout deletes the row, history lives in `audit_log`.
+
 ### `events` (partitioned)
 
 The event store. Bitemporal, LIST-partitioned by `tenant_id`. Each tenant gets its own partition, created atomically in the same transaction that inserts the tenant CRUD row.
@@ -218,7 +234,7 @@ USING (tenant_id = current_setting('app.current_tenant_id')::uuid)
 
 System-level operations (migrations, projection rebuilds, global replay) use a dedicated database role with `BYPASSRLS` privilege.
 
-The `principals`, `identities`, and `crypto_keys` tables are cross-tenant by design and do NOT have tenant-scoped RLS. Access control for these is application-layer only.
+The `principals`, `identities`, `crypto_keys`, and `sessions` tables are cross-tenant by design and do NOT have tenant-scoped RLS. Access control for these is application-layer only.
 
 LIST partition pruning makes the RLS predicate essentially free — Postgres prunes to the correct partition first, then the RLS check is trivially true for every remaining row. RLS also acts as insurance against a future partitioning strategy change (e.g., migration to hash partitioning).
 
@@ -243,9 +259,11 @@ erDiagram
     principals ||--o{ memberships : "has"
     principals ||--o{ identities : "has"
     principals ||--o{ crypto_keys : "has one"
+    principals ||--o{ sessions : "has"
     principals ||--o{ forgettable_payloads : "owns"
     principals ||--o{ events : "acted in"
     tenants ||--o{ memberships : "has"
+    tenants ||--o{ sessions : "has"
     tenants ||--o{ events : "partitions"
     events ||--o| forgettable_payloads : "has"
 
@@ -279,6 +297,14 @@ erDiagram
         text provider_subject_id
         text email_hash
         timestamptz created_at
+    }
+
+    sessions {
+        text id PK
+        uuid principal_id FK
+        uuid tenant_id FK
+        timestamptz created_at
+        timestamptz expires_at
     }
 
     events {

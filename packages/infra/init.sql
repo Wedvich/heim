@@ -60,6 +60,16 @@ CREATE TABLE identities (
   UNIQUE (provider, provider_subject_id)
 );
 
+-- sessions ------------------------------------------------------------------
+
+CREATE TABLE sessions (
+  id            text        PRIMARY KEY,
+  principal_id  uuid           NOT NULL REFERENCES principals(id),
+  tenant_id     uuid                    REFERENCES tenants(id),
+  created_at    timestamptz    NOT NULL DEFAULT now(),
+  expires_at    timestamptz    NOT NULL
+);
+
 -- events (LIST partitioned by tenant_id) -------------------------------------
 
 CREATE TABLE events (
@@ -130,6 +140,9 @@ CREATE INDEX idx_memberships_tenant_id            ON memberships (tenant_id);
 
 CREATE INDEX idx_identities_email_hash            ON identities (email_hash);
 CREATE INDEX idx_identities_principal_id          ON identities (principal_id);
+
+CREATE INDEX idx_sessions_principal_id             ON sessions (principal_id);
+CREATE INDEX idx_sessions_expires_at               ON sessions (expires_at);
 
 CREATE INDEX idx_events_tenant_record_time        ON events (tenant_id, record_time);
 CREATE INDEX idx_events_tenant_actual_time        ON events (tenant_id, actual_time);
