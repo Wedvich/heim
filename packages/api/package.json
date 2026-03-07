@@ -13,6 +13,7 @@
   "dependencies": {
     "@heim/domain": "workspace:*",
     "express": "^5.1.0",
+    "google-auth-library": "^9.0.0",
     "pg": "^8.19.0"
   },
   "devDependencies": {
