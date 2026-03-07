@@ -12,11 +12,18 @@ vi.mock("./session-service.ts", () => ({
   createSession: vi.fn(),
 }));
 
+vi.mock("../audit/audit-logger.ts", () => ({
+  SYSTEM_PRINCIPAL_ID: "00000000-0000-0000-0000-000000000001",
+  writeAuditLog: vi.fn(),
+}));
+
 import { findPrincipalByProviderIdentity } from "./identity-repository.ts";
 import { createSession } from "./session-service.ts";
+import { writeAuditLog, SYSTEM_PRINCIPAL_ID } from "../audit/audit-logger.ts";
 
 const mockFindPrincipal = vi.mocked(findPrincipalByProviderIdentity);
 const mockCreateSession = vi.mocked(createSession);
+const mockWriteAuditLog = vi.mocked(writeAuditLog);
 
 function makeRegistry(overrides?: { verify?: ReturnType<typeof vi.fn> }): OidcVerifierRegistry {
   return {
@@ -43,6 +50,13 @@ function makeRes() {
   return { res: res as Response, json, status, cookie };
 }
 
+function makeReq(body: Record<string, unknown>): Request {
+  return {
+    body,
+    requestContext: { userAgent: "TestAgent/1.0" },
+  } as unknown as Request;
+}
+
 const noop = vi.fn();
 
 describe("loginHandler", () => {
@@ -53,18 +67,20 @@ describe("loginHandler", () => {
   it("returns 400 when provider is missing", async () => {
     const handler = loginHandler(makeRegistry(), makePool());
     const { res, status } = makeRes();
-    await handler({ body: { credential: "tok" } } as Request, res, noop);
+    await handler(makeReq({ credential: "tok" }), res, noop);
     expect(status).toHaveBeenCalledWith(400);
+    expect(mockWriteAuditLog).not.toHaveBeenCalled();
   });
 
   it("returns 400 when credential is missing", async () => {
     const handler = loginHandler(makeRegistry(), makePool());
     const { res, status } = makeRes();
-    await handler({ body: { provider: "google" } } as Request, res, noop);
+    await handler(makeReq({ provider: "google" }), res, noop);
     expect(status).toHaveBeenCalledWith(400);
+    expect(mockWriteAuditLog).not.toHaveBeenCalled();
   });
 
-  it("returns 400 for an unknown provider", async () => {
+  it("returns 400 for an unknown provider and writes audit log", async () => {
     const registry = makeRegistry({
       verify: vi.fn().mockImplementation(() => {
         throw new UnknownProviderError("github");
@@ -72,21 +88,37 @@ describe("loginHandler", () => {
     });
     const handler = loginHandler(registry, makePool());
     const { res, status } = makeRes();
-    await handler({ body: { provider: "github", credential: "tok" } } as Request, res, noop);
+    await handler(makeReq({ provider: "github", credential: "tok" }), res, noop);
     expect(status).toHaveBeenCalledWith(400);
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        principalId: SYSTEM_PRINCIPAL_ID,
+        action: "auth.login.failure",
+        detail: expect.objectContaining({ reason: "unknown_provider", provider: "github" }),
+      }),
+    );
   });
 
-  it("returns 401 for a verification failure", async () => {
+  it("returns 401 for a verification failure and writes audit log", async () => {
     const registry = makeRegistry({
       verify: vi.fn().mockRejectedValue(new TokenVerificationError("google", "expired")),
     });
     const handler = loginHandler(registry, makePool());
     const { res, status } = makeRes();
-    await handler({ body: { provider: "google", credential: "bad" } } as Request, res, noop);
+    await handler(makeReq({ provider: "google", credential: "bad" }), res, noop);
     expect(status).toHaveBeenCalledWith(401);
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        principalId: SYSTEM_PRINCIPAL_ID,
+        action: "auth.login.failure",
+        detail: expect.objectContaining({ reason: "token_verification_failed" }),
+      }),
+    );
   });
 
-  it("returns 401 when user has no identity record", async () => {
+  it("returns 401 when user has no identity record and writes audit log", async () => {
     const registry = makeRegistry({
       verify: vi.fn().mockResolvedValue({
         provider: "google",
@@ -98,11 +130,44 @@ describe("loginHandler", () => {
     mockFindPrincipal.mockResolvedValue(null);
     const handler = loginHandler(registry, makePool());
     const { res, status } = makeRes();
-    await handler({ body: { provider: "google", credential: "tok" } } as Request, res, noop);
+    await handler(makeReq({ provider: "google", credential: "tok" }), res, noop);
     expect(status).toHaveBeenCalledWith(401);
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        principalId: SYSTEM_PRINCIPAL_ID,
+        action: "auth.login.failure",
+        detail: expect.objectContaining({ reason: "unknown_identity" }),
+      }),
+    );
   });
 
-  it("sets cookie and returns 200 on success", async () => {
+  it("returns 401 when user has no membership and writes audit log", async () => {
+    const principalId = "principal-uuid";
+    const registry = makeRegistry({
+      verify: vi.fn().mockResolvedValue({
+        provider: "google",
+        providerSubjectId: "sub-123",
+        email: "user@example.com",
+        emailVerified: true,
+      }),
+    });
+    mockFindPrincipal.mockResolvedValue({ principalId });
+    const handler = loginHandler(registry, makePool({ rows: [] }));
+    const { res, status } = makeRes();
+    await handler(makeReq({ provider: "google", credential: "tok" }), res, noop);
+    expect(status).toHaveBeenCalledWith(401);
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        principalId,
+        action: "auth.login.failure",
+        detail: expect.objectContaining({ reason: "no_membership" }),
+      }),
+    );
+  });
+
+  it("sets cookie, returns 200 on success, and writes audit log", async () => {
     const principalId = "principal-uuid";
     const tenantId = "tenant-uuid";
     const registry = makeRegistry({
@@ -119,15 +184,19 @@ describe("loginHandler", () => {
     const handler = loginHandler(registry, pool);
     const { res, json, cookie } = makeRes();
 
-    await handler(
-      { body: { provider: "google", credential: "valid-token" } } as Request,
-      res,
-      noop,
-    );
+    await handler(makeReq({ provider: "google", credential: "valid-token" }), res, noop);
 
     expect(cookie).toHaveBeenCalledWith("heim_sid", "session-token", expect.any(Object));
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ principal: { id: principalId }, tenant: { id: tenantId } }),
+    );
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        principalId,
+        tenantId,
+        action: "auth.login.success",
+      }),
     );
   });
 });

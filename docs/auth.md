@@ -60,6 +60,14 @@
 - **In-memory cache**: Single-instance deployment uses a `Map` with 5-minute TTL to reduce DB lookups. Logout/revocation calls `invalidateSession()` to clear cache immediately.
 - **Logout**: Deletes the session row from the DB, clears the cookie, and invalidates the cache entry. No soft delete — history lives in `audit_log`.
 
+## Audit Logging
+
+Auth actions (login success/failure, logout) are written to the `audit_log` table. Each entry captures the action, principal, resource, and non-PII request context (user agent). See `packages/api/src/audit/audit-logger.ts`.
+
+> **TODO:** When command/event infrastructure lands, add a `correlation_id` (per-request UUID, propagated to all resulting events) and `causation_id` (what directly caused this action) to both the request context and audit log `detail`. See `docs/database.md` events table for the correlation/causation model.
+
+> **TODO:** IP address logging is deferred until a scrubbing/anonymization mechanism is in place for the "forget a principal" flow (GDPR right to erasure). Once that infrastructure exists, add `ip` to `AuditDetail` and `RequestContext`.
+
 ## Dev Bypass Auth
 
 For local development and testing, a `DEV_AUTH_BYPASS=true` environment variable enables:

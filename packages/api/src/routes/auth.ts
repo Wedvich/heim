@@ -3,6 +3,7 @@ import { pool } from "../db.ts";
 import type { OidcVerifierRegistry } from "../auth/oidc/registry.ts";
 import { loginHandler } from "../auth/login-handler.ts";
 import { COOKIE_NAME, cookieOptions, invalidateSession } from "../middleware/session.ts";
+import { writeAuditLog } from "../audit/audit-logger.ts";
 
 export function createAuthRouter(oidcRegistry: OidcVerifierRegistry): Router {
   const router = Router();
@@ -12,6 +13,12 @@ export function createAuthRouter(oidcRegistry: OidcVerifierRegistry): Router {
   router.post("/logout", async (req, res) => {
     const sid = req.session?.sessionId;
     if (sid) {
+      writeAuditLog(pool, {
+        principalId: req.session!.principalId,
+        tenantId: req.session!.tenantId,
+        action: "auth.logout",
+        detail: { user_agent: req.requestContext.userAgent },
+      });
       await invalidateSession(sid);
     }
     res.clearCookie(COOKIE_NAME, cookieOptions());
@@ -37,24 +44,20 @@ export function createAuthRouter(oidcRegistry: OidcVerifierRegistry): Router {
       return;
     }
 
-    let tenant: { id: string; name: string; slug: string } | null = null;
+    const tenantResult = await pool.query<{
+      id: string;
+      name: string;
+      slug: string;
+    }>(`SELECT id, name, slug FROM tenants WHERE id = $1 AND status = 'active'`, [tenantId]);
+    const tenant = tenantResult.rows[0] ?? null;
+
     let membership: { role: string } | null = null;
-
-    if (tenantId) {
-      const tenantResult = await pool.query<{
-        id: string;
-        name: string;
-        slug: string;
-      }>(`SELECT id, name, slug FROM tenants WHERE id = $1 AND status = 'active'`, [tenantId]);
-      tenant = tenantResult.rows[0] ?? null;
-
-      if (tenant) {
-        const membershipResult = await pool.query<{ role: string }>(
-          `SELECT role FROM memberships WHERE principal_id = $1 AND tenant_id = $2`,
-          [principalId, tenantId],
-        );
-        membership = membershipResult.rows[0] ?? null;
-      }
+    if (tenant) {
+      const membershipResult = await pool.query<{ role: string }>(
+        `SELECT role FROM memberships WHERE principal_id = $1 AND tenant_id = $2`,
+        [principalId, tenantId],
+      );
+      membership = membershipResult.rows[0] ?? null;
     }
 
     res.json({

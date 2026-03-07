@@ -68,7 +68,7 @@ export const sessionMiddleware: RequestHandler = async (req, res, next) => {
   const result = await pool.query<{
     id: string;
     principal_id: string;
-    tenant_id: string | null;
+    tenant_id: string;
     expires_at: Date;
   }>(
     `SELECT s.id, s.principal_id, s.tenant_id, s.expires_at

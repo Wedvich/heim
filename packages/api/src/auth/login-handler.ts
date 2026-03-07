@@ -5,6 +5,7 @@ import { TokenVerificationError, UnknownProviderError } from "./oidc/types.ts";
 import { findPrincipalByProviderIdentity } from "./identity-repository.ts";
 import { createSession } from "./session-service.ts";
 import { COOKIE_NAME, cookieOptions } from "../middleware/session.ts";
+import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "../audit/audit-logger.ts";
 
 export function loginHandler(registry: OidcVerifierRegistry, db: Pool): RequestHandler {
   return async (req, res) => {
@@ -21,16 +22,28 @@ export function loginHandler(registry: OidcVerifierRegistry, db: Pool): RequestH
         return;
       }
 
+      const detail = { provider, user_agent: req.requestContext.userAgent };
+
       let identity;
       try {
         identity = await registry.verify(provider, credential);
       } catch (err) {
         if (err instanceof UnknownProviderError) {
+          writeAuditLog(db, {
+            principalId: SYSTEM_PRINCIPAL_ID,
+            action: "auth.login.failure",
+            detail: { ...detail, reason: "unknown_provider" },
+          });
           res.status(400).json({ error: "unknown_provider" });
           return;
         }
         if (err instanceof TokenVerificationError) {
           console.warn("Token verification failed", { provider, cause: err.cause });
+          writeAuditLog(db, {
+            principalId: SYSTEM_PRINCIPAL_ID,
+            action: "auth.login.failure",
+            detail: { ...detail, reason: "token_verification_failed" },
+          });
           res.status(401).json({ error: "verification_failed" });
           return;
         }
@@ -44,6 +57,11 @@ export function loginHandler(registry: OidcVerifierRegistry, db: Pool): RequestH
       );
 
       if (!principal) {
+        writeAuditLog(db, {
+          principalId: SYSTEM_PRINCIPAL_ID,
+          action: "auth.login.failure",
+          detail: { ...detail, reason: "unknown_identity" },
+        });
         res.status(401).json({ error: "unknown_user" });
         return;
       }
@@ -54,11 +72,24 @@ export function loginHandler(registry: OidcVerifierRegistry, db: Pool): RequestH
       );
       const membership = membershipResult.rows[0];
       if (!membership) {
+        writeAuditLog(db, {
+          principalId: principal.principalId,
+          action: "auth.login.failure",
+          detail: { ...detail, reason: "no_membership" },
+        });
         res.status(401).json({ error: "no_membership" });
         return;
       }
 
       const token = await createSession(db, principal.principalId, membership.tenant_id);
+
+      writeAuditLog(db, {
+        principalId: principal.principalId,
+        tenantId: membership.tenant_id,
+        action: "auth.login.success",
+        detail,
+      });
+
       res.cookie(COOKIE_NAME, token, cookieOptions());
       res.json({
         principal: { id: principal.principalId },

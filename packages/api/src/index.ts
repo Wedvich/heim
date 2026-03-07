@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "./db.ts";
 import "./session-context.ts";
+import { requestContextMiddleware } from "./middleware/request-context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
 import { createAuthRouter } from "./routes/auth.ts";
 import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
@@ -17,6 +18,7 @@ if (googleClientId) {
 }
 
 app.use(express.json());
+app.use(requestContextMiddleware);
 app.use(sessionMiddleware);
 
 app.get("/api/health", (_req, res) => {
