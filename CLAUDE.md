@@ -2,13 +2,17 @@
 
 ## Principles
 
-1. Security and GDPR compliance are hard requirements, not afterthoughts.
-   - No PII in cleartext — use forgettable payloads with crypto shredding (see [docs/database.md](docs/database.md)).
-   - `events.metadata` and `audit_log.detail` must never contain PII.
-   - Every new field that stores personal data needs an explicit plan for right-to-erasure.
-   - Validate and sanitize at system boundaries (user input, external APIs).
-   - Secrets (MEK, HMAC keys) must stay out of code and config files — use env vars or KMS.
-2. Good developer experience and ergonomics is a key priority.
+- Security and GDPR compliance are hard requirements, not afterthoughts.
+  - No PII in cleartext — use forgettable payloads with crypto shredding (see [docs/database.md](docs/database.md)).
+  - `events.metadata` and `audit_log.detail` must never contain PII.
+  - Every new field that stores personal data needs an explicit plan for right-to-erasure.
+  - Validate and sanitize at system boundaries (user input, external APIs).
+  - Secrets (MEK, HMAC keys) must stay out of code and config files — use env vars or KMS.
+- Good developer experience and ergonomics is a key priority.
+- Prefer small interfaces over deep hierarchies. A new capability should ideally mean a new
+  implementation of an existing interface, not a change to shared abstractions.
+- Avoid duplicating knowledge — if something is already expressed in one place (a type, a table,
+  a config value), don't restate it elsewhere in a way that can drift.
 
 ## Source Control (Git)
 
