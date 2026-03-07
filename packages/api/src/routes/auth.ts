@@ -2,11 +2,21 @@ import { Router } from "express";
 import { pool } from "../db.ts";
 import type { OidcVerifierRegistry } from "../auth/oidc/registry.ts";
 import { loginHandler } from "../auth/login-handler.ts";
+import { COOKIE_NAME, cookieOptions, invalidateSession } from "../middleware/session.ts";
 
 export function createAuthRouter(oidcRegistry: OidcVerifierRegistry): Router {
   const router = Router();
 
   router.post("/login", loginHandler(oidcRegistry, pool));
+
+  router.post("/logout", async (req, res) => {
+    const sid = req.session?.sessionId;
+    if (sid) {
+      await invalidateSession(sid);
+    }
+    res.clearCookie(COOKIE_NAME, cookieOptions());
+    res.json({ ok: true });
+  });
 
   router.get("/session", async (req, res) => {
     if (!req.session) {

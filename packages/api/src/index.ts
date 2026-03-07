@@ -11,13 +11,9 @@ const port = 5244;
 
 const oidcRegistry = new OidcVerifierRegistry();
 
-const googleClientIds = [
-  process.env.GOOGLE_CLIENT_ID_DEV,
-  process.env.GOOGLE_CLIENT_ID_PROD,
-].filter(Boolean) as string[];
-
-if (googleClientIds.length > 0) {
-  oidcRegistry.register(new GoogleOidcVerifier({ clientIds: googleClientIds }));
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+if (googleClientId) {
+  oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 }
 
 app.use(express.json());

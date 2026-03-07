@@ -3,16 +3,16 @@ import type { OidcProviderVerifier, VerifiedIdentity } from "./types.ts";
 import { TokenVerificationError } from "./types.ts";
 
 interface GoogleVerifierConfig {
-  clientIds: string[];
+  clientId: string;
 }
 
 export class GoogleOidcVerifier implements OidcProviderVerifier {
   readonly providerId = "google";
   readonly #client: OAuth2Client;
-  readonly #clientIds: string[];
+  readonly #clientId: string;
 
   constructor(config: GoogleVerifierConfig) {
-    this.#clientIds = config.clientIds;
+    this.#clientId = config.clientId;
     this.#client = new OAuth2Client();
   }
 
@@ -21,7 +21,7 @@ export class GoogleOidcVerifier implements OidcProviderVerifier {
     try {
       ticket = await this.#client.verifyIdToken({
         idToken: credential,
-        audience: this.#clientIds,
+        audience: this.#clientId,
       });
     } catch (cause) {
       throw new TokenVerificationError(this.providerId, "Token verification failed", cause);

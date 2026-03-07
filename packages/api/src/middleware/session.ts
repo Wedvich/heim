@@ -31,8 +31,9 @@ interface CacheEntry {
 
 export const sessionCache = new Map<string, CacheEntry>();
 
-export function invalidateSession(sessionId: string): void {
+export async function invalidateSession(sessionId: string): Promise<void> {
   sessionCache.delete(sessionId);
+  await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
 }
 
 export const sessionMiddleware: RequestHandler = async (req, res, next) => {

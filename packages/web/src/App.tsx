@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 
-interface SessionResult {
+interface ApiResult {
   status: number;
   body: unknown;
 }
 
 export function App(): React.JSX.Element {
   const [healthStatus, setHealthStatus] = useState<string>("loading…");
-  const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
+  const [sessionResult, setSessionResult] = useState<ApiResult | null>(null);
+  const [idToken, setIdToken] = useState("");
+  const [loginResult, setLoginResult] = useState<ApiResult | null>(null);
+  const [logoutResult, setLogoutResult] = useState<ApiResult | null>(null);
 
   useEffect(() => {
     fetch("/api/health")
@@ -30,35 +33,79 @@ export function App(): React.JSX.Element {
     }
   }
 
-  const isSuccess =
-    sessionResult !== null && sessionResult.status >= 200 && sessionResult.status < 300;
-  const isError = sessionResult !== null && !isSuccess;
+  async function login() {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "google", credential: idToken.trim() }),
+      });
+      const body: unknown = await res.json();
+      setLoginResult({ status: res.status, body });
+    } catch {
+      setLoginResult({ status: 0, body: { error: "fetch_failed" } });
+    }
+  }
+
+  async function logout() {
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      const body: unknown = await res.json();
+      setLogoutResult({ status: res.status, body });
+    } catch {
+      setLogoutResult({ status: 0, body: { error: "fetch_failed" } });
+    }
+  }
 
   return (
     <>
       <h1>Heim</h1>
       <p>API: {healthStatus}</p>
-      <button
-        onClick={checkSession}
-        style={{ marginTop: 16, padding: "8px 16px", cursor: "pointer" }}
-      >
-        Check Session
-      </button>
-      {sessionResult && (
-        <pre
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 6,
-            color: "#fff",
-            backgroundColor: isError ? "#b91c1c" : "#15803d",
-            maxWidth: 600,
-            overflow: "auto",
-          }}
+      <div style={{ display: "flex", gap: 8, alignItems: "start", marginTop: 16 }}>
+        <button onClick={checkSession} style={{ padding: "8px 16px", cursor: "pointer" }}>
+          Check Session
+        </button>
+        <button onClick={logout} style={{ padding: "8px 16px", cursor: "pointer" }}>
+          Logout
+        </button>
+        <textarea
+          value={idToken}
+          onChange={(e) => setIdToken(e.target.value)}
+          placeholder="Paste Google ID token here…"
+          rows={3}
+          style={{ width: 400, fontFamily: "monospace", fontSize: 12 }}
+        />
+        <button
+          onClick={login}
+          disabled={!idToken.trim()}
+          style={{ padding: "8px 16px", cursor: "pointer" }}
         >
-          {`HTTP ${sessionResult.status}\n${JSON.stringify(sessionResult.body, null, 2)}`}
-        </pre>
-      )}
+          Login
+        </button>
+      </div>
+      <ResultBlock result={sessionResult} label="Session" />
+      <ResultBlock result={loginResult} label="Login" />
+      <ResultBlock result={logoutResult} label="Logout" />
     </>
+  );
+}
+
+function ResultBlock({ result, label }: { result: ApiResult | null; label: string }) {
+  if (!result) return null;
+  const isSuccess = result.status >= 200 && result.status < 300;
+  return (
+    <pre
+      style={{
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 6,
+        color: "#fff",
+        backgroundColor: isSuccess ? "#15803d" : "#b91c1c",
+        maxWidth: 600,
+        overflow: "auto",
+      }}
+    >
+      {`${label}: HTTP ${result.status}\n${JSON.stringify(result.body, null, 2)}`}
+    </pre>
   );
 }

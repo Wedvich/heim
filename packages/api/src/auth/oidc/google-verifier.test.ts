@@ -6,7 +6,7 @@ import { TokenVerificationError } from "./types.ts";
 const mockVerifyIdToken = vi.spyOn(OAuth2Client.prototype, "verifyIdToken");
 
 describe("GoogleOidcVerifier", () => {
-  const verifier = new GoogleOidcVerifier({ clientIds: ["test-client-id"] });
+  const verifier = new GoogleOidcVerifier({ clientId: "test-client-id" });
 
   beforeEach(() => {
     vi.resetAllMocks();
