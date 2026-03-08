@@ -9,6 +9,11 @@ import { writeAuditLog } from "../audit/audit-logger.ts";
 export function createAuthRouter(oidcRegistry: OidcVerifierRegistry, emailHmacKey: string): Router {
   const router = Router();
 
+  router.use((_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
+
   router.post("/login", loginHandler(oidcRegistry, pool));
   router.post("/register", registerHandler(oidcRegistry, pool, emailHmacKey));
 
