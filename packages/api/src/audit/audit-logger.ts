@@ -10,10 +10,19 @@ export interface AuditDetail {
   reason?: string;
 }
 
+export type AuditAction =
+  | "auth.login.success"
+  | "auth.login.failure"
+  | "auth.logout"
+  | "auth.register.success"
+  | "auth.register.failure"
+  | "auth.invite.redeemed"
+  | "auth.provider.linked";
+
 export interface AuditLogEntry {
   principalId: string;
   tenantId?: string;
-  action: string;
+  action: AuditAction;
   resourceType?: string;
   resourceId?: string;
   detail?: AuditDetail;
