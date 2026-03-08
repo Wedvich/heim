@@ -35,6 +35,11 @@ export function generateSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
+  return base || randomBytes(2).toString("hex");
+}
+
+export function generateSlugWithSuffix(name: string): string {
+  const base = generateSlug(name);
   const suffix = randomBytes(2).toString("hex");
-  return base ? `${base}-${suffix}` : suffix;
+  return `${base}-${suffix}`;
 }

@@ -10,7 +10,7 @@ import {
 } from "./identity-repository.ts";
 import { findValidInvite, markInviteUsed } from "./invite-repository.ts";
 import { hashEmail } from "./email-hash.ts";
-import { generateSlug, validateSlug } from "./slug.ts";
+import { generateSlug, generateSlugWithSuffix, validateSlug } from "./slug.ts";
 import { COOKIE_NAME, cookieOptions } from "../middleware/session.ts";
 import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "../audit/audit-logger.ts";
 
@@ -165,16 +165,19 @@ export function registerHandler(
               return;
             }
             slug = tenantSlug;
+            const slugCheck = await client.query(`SELECT 1 FROM tenants WHERE slug = $1`, [slug]);
+            if (slugCheck.rows.length > 0) {
+              await client.query("ROLLBACK");
+              res.status(409).json({ error: "slug_taken" });
+              return;
+            }
           } else {
-            slug = generateSlug(tenantName);
-          }
-
-          // Check slug availability
-          const slugCheck = await client.query(`SELECT 1 FROM tenants WHERE slug = $1`, [slug]);
-          if (slugCheck.rows.length > 0) {
-            await client.query("ROLLBACK");
-            res.status(409).json({ error: "slug_taken" });
-            return;
+            // Try the clean base slug first; fall back to suffixed version
+            slug = generateSlug(tenantName as string);
+            const slugCheck = await client.query(`SELECT 1 FROM tenants WHERE slug = $1`, [slug]);
+            if (slugCheck.rows.length > 0) {
+              slug = generateSlugWithSuffix(tenantName as string);
+            }
           }
 
           const tenantResult = await client.query<{ id: string }>(

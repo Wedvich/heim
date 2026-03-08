@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateSlug, validateSlug } from "./slug.ts";
+import { generateSlug, generateSlugWithSuffix, validateSlug } from "./slug.ts";
 
 describe("validateSlug", () => {
   it("accepts a valid slug", () => {
@@ -43,14 +43,12 @@ describe("validateSlug", () => {
 
 describe("generateSlug", () => {
   it("lowercases and replaces non-alphanumeric with hyphens", () => {
-    const slug = generateSlug("My Cool Team!");
-    expect(slug).toMatch(/^my-cool-team-[0-9a-f]{4}$/);
+    expect(generateSlug("My Cool Team!")).toBe("my-cool-team");
   });
 
-  it("truncates long names to 40 chars before suffix", () => {
+  it("truncates long names to 40 chars", () => {
     const slug = generateSlug("a".repeat(60));
-    // 40 chars + '-' + 4 hex chars = 45
-    expect(slug.length).toBeLessThanOrEqual(45);
+    expect(slug.length).toBeLessThanOrEqual(40);
   });
 
   it("handles names that produce empty base", () => {
@@ -59,7 +57,13 @@ describe("generateSlug", () => {
   });
 
   it("strips leading and trailing hyphens from the base", () => {
-    const slug = generateSlug("  --test--  ");
-    expect(slug).toMatch(/^test-[0-9a-f]{4}$/);
+    expect(generateSlug("  --test--  ")).toBe("test");
+  });
+});
+
+describe("generateSlugWithSuffix", () => {
+  it("appends a 4-char hex suffix", () => {
+    const slug = generateSlugWithSuffix("My Team");
+    expect(slug).toMatch(/^my-team-[0-9a-f]{4}$/);
   });
 });
