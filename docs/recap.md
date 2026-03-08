@@ -1,6 +1,53 @@
-# Session Recap — Registration Flow
+# Session Recap
 
-## What was implemented
+## Latest: Routing, Google Sign-In, and Auth Hardening
+
+### Web: Client-side routing and Google Sign-In
+
+Added React Router v7 and a real Google Sign-In flow. The frontend now authenticates users through the existing backend endpoints instead of the manual textarea-based token pasting.
+
+#### New files
+
+| File                                           | Purpose                                                                         |
+| ---------------------------------------------- | ------------------------------------------------------------------------------- |
+| `packages/web/src/auth/api.ts`                 | Typed fetch wrappers: `fetchSession`, `postLogin`, `postLogout`                 |
+| `packages/web/src/auth/auth-context.tsx`       | `AuthProvider` + `useAuth` — tracks `loading / authenticated / unauthenticated` |
+| `packages/web/src/hooks/use-google-sign-in.ts` | Lazy-loads GIS script, initializes SDK, renders button via ref callback         |
+| `packages/web/src/pages/LoginPage.tsx`         | Login page with Google button, redirects to `/` on success                      |
+| `packages/web/src/pages/HomePage.tsx`          | Authenticated landing page with tenant info, settings link, sign-out            |
+| `packages/web/src/pages/SettingsPage.tsx`      | Placeholder authenticated route                                                 |
+| `packages/web/src/components/RequireAuth.tsx`  | Layout route guard — redirects unauthenticated users to `/login`                |
+| `packages/web/src/env.d.ts`                    | `ImportMetaEnv` type for `GOOGLE_CLIENT_ID`                                     |
+
+#### Modified files
+
+| File                          | Change                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `packages/web/package.json`   | Added `react-router` dependency                                        |
+| `packages/web/vite.config.ts` | Function form with `loadEnv` to expose `GOOGLE_CLIENT_ID` via `define` |
+| `packages/web/src/main.tsx`   | Wrapped `<App>` in `<BrowserRouter>` + `<AuthProvider>`                |
+| `packages/web/src/App.tsx`    | Replaced manual testing UI with `<Routes>` / `<Route>` definitions     |
+
+#### Auth flow
+
+1. App mounts → `AuthProvider` calls `GET /api/auth/session`
+2. Unauthenticated → `RequireAuth` redirects to `/login`
+3. GIS script loaded lazily → renders branded Google button
+4. User clicks → GIS returns ID token → `POST /api/auth/login` → session cookie set
+5. `AuthProvider` updates state → redirect to `/`
+6. Sign out → `POST /api/auth/logout` → redirect to `/login`
+
+#### Environment
+
+`GOOGLE_CLIENT_ID` is read from the root `.env` via Vite's `loadEnv` and exposed through `define` (not `VITE_` prefixed).
+
+### API: Cache-Control on auth endpoints
+
+Added `Cache-Control: no-store` middleware to the auth router. All auth endpoints (`/login`, `/register`, `/logout`, `/session`) now explicitly prevent browser and proxy caching.
+
+---
+
+## Previous: Registration Flow
 
 Invite-only registration via `POST /api/auth/register`, with HMAC email hashing for cross-provider identity merge.
 
@@ -16,16 +63,6 @@ Invite-only registration via `POST /api/auth/register`, with HMAC email hashing 
 | `packages/api/src/routes/tenants.ts`         | `GET /api/tenants/slug-available` endpoint                                                        |
 | `docs/testing-guide.md`                      | Manual testing guide for all auth scenarios                                                       |
 
-### Modified files
-
-| File                                           | Change                                                           |
-| ---------------------------------------------- | ---------------------------------------------------------------- |
-| `packages/infra/init.sql`                      | Added `invites` table + indexes                                  |
-| `packages/api/src/auth/identity-repository.ts` | Added `findPrincipalByEmailHash`, `createIdentity`               |
-| `packages/api/src/audit/audit-logger.ts`       | Typed `AuditAction` union replacing `action: string`             |
-| `packages/api/src/routes/auth.ts`              | Accepts optional `emailHmacKey`, mounts `/register` when present |
-| `packages/api/src/index.ts`                    | Reads `EMAIL_HMAC_KEY` env var, mounts tenants router            |
-
 ### Registration flow summary
 
 1. Validate input (`provider`, `credential`, `inviteToken`)
@@ -38,14 +75,6 @@ Invite-only registration via `POST /api/auth/register`, with HMAC email hashing 
 8. Mark invite used, create session, set cookie — all in one transaction
 9. Fire-and-forget audit logs: `auth.register.success`, `auth.invite.redeemed`, optionally `auth.provider.linked`
 
-### Audit actions added
-
-`auth.register.success`, `auth.register.failure`, `auth.invite.redeemed`, `auth.provider.linked`
-
-### Slug generation behavior
-
-`generateSlug("My Household")` produces `my-household`. The register handler tries this first; only if taken, it falls back to `generateSlugWithSuffix` which appends a 4-char hex suffix (e.g. `my-household-a3f1`). Explicit `tenantSlug` from the client is validated and used as-is (409 if taken).
-
 ### Environment variables
 
 | Variable           | Required for                                                   |
@@ -53,7 +82,7 @@ Invite-only registration via `POST /api/auth/register`, with HMAC email hashing 
 | `GOOGLE_CLIENT_ID` | Login + Register                                               |
 | `EMAIL_HMAC_KEY`   | Register only (any string; use 32+ random bytes in production) |
 
-If `EMAIL_HMAC_KEY` is not set, the app boots normally but `/auth/register` is not mounted.
+Both variables are required — the app throws on startup if either is missing.
 
 ### Test coverage
 
