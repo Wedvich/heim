@@ -18,6 +18,11 @@ if (googleClientId) {
   oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 }
 
+const emailHmacKey = process.env.EMAIL_HMAC_KEY;
+if (!emailHmacKey) {
+  console.warn("EMAIL_HMAC_KEY not set — registration endpoint will be unavailable");
+}
+
 app.use(express.json());
 app.use(requestContextMiddleware);
 app.use(sessionMiddleware);
@@ -26,7 +31,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/auth", createAuthRouter(oidcRegistry));
+app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey));
 app.use("/api/tenants", createTenantsRouter());
 
 const server = app.listen(port, () => {
