@@ -70,6 +70,20 @@ CREATE TABLE sessions (
   expires_at    timestamptz    NOT NULL
 );
 
+-- invites -------------------------------------------------------------------
+
+CREATE TABLE invites (
+  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  token       text           NOT NULL UNIQUE,
+  tenant_id   uuid                    REFERENCES tenants(id),
+  role        text           NOT NULL DEFAULT 'member',
+  created_by  uuid           NOT NULL REFERENCES principals(id),
+  used_by     uuid                    REFERENCES principals(id),
+  used_at     timestamptz,
+  expires_at  timestamptz    NOT NULL,
+  created_at  timestamptz    NOT NULL DEFAULT now()
+);
+
 -- events (LIST partitioned by tenant_id) -------------------------------------
 
 CREATE TABLE events (
@@ -143,6 +157,9 @@ CREATE INDEX idx_identities_principal_id          ON identities (principal_id);
 
 CREATE INDEX idx_sessions_principal_id             ON sessions (principal_id);
 CREATE INDEX idx_sessions_expires_at               ON sessions (expires_at);
+
+CREATE INDEX idx_invites_token                     ON invites (token);
+CREATE INDEX idx_invites_expires_at                ON invites (expires_at);
 
 CREATE INDEX idx_events_tenant_record_time        ON events (tenant_id, record_time);
 CREATE INDEX idx_events_tenant_actual_time        ON events (tenant_id, actual_time);
