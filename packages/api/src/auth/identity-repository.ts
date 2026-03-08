@@ -40,5 +40,5 @@ export async function createIdentity(
      RETURNING id`,
     [params.principalId, params.provider, params.providerSubjectId, params.emailHash],
   );
-  return { id: result.rows[0].id };
+  return { id: result.rows[0]!.id };
 }

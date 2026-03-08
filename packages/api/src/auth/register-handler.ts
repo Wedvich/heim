@@ -22,8 +22,7 @@ export function registerHandler(
   emailHmacKey: string,
 ): RequestHandler {
   return async (req, res) => {
-    const detail = {
-      provider: (req.body as Record<string, unknown>).provider as string | undefined,
+    const detail: { provider?: string; user_agent: string } = {
       user_agent: req.requestContext.userAgent,
     };
 
@@ -123,13 +122,13 @@ export function registerHandler(
             const principalResult = await client.query<{ id: string }>(
               `INSERT INTO principals (type, status) VALUES ('user', 'active') RETURNING id`,
             );
-            principalId = principalResult.rows[0].id;
+            principalId = principalResult.rows[0]!.id;
           }
         } else {
           const principalResult = await client.query<{ id: string }>(
             `INSERT INTO principals (type, status) VALUES ('user', 'active') RETURNING id`,
           );
-          principalId = principalResult.rows[0].id;
+          principalId = principalResult.rows[0]!.id;
         }
 
         // 5. Create identity
@@ -182,7 +181,7 @@ export function registerHandler(
             `INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id`,
             [tenantName, slug],
           );
-          tenantId = tenantResult.rows[0].id;
+          tenantId = tenantResult.rows[0]!.id;
 
           // Create partitions for events and forgettable_payloads
           await client.query(

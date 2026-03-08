@@ -26,7 +26,7 @@ import {
   createIdentity,
 } from "./identity-repository.ts";
 import { findValidInvite, markInviteUsed } from "./invite-repository.ts";
-import { writeAuditLog, SYSTEM_PRINCIPAL_ID } from "../audit/audit-logger.ts";
+import { writeAuditLog } from "../audit/audit-logger.ts";
 
 const mockFindPrincipal = vi.mocked(findPrincipalByProviderIdentity);
 const mockFindByEmail = vi.mocked(findPrincipalByEmailHash);
