@@ -4,6 +4,7 @@ import "./session-context.ts";
 import { requestContextMiddleware } from "./middleware/request-context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
 import { createAuthRouter } from "./routes/auth.ts";
+import { createTenantsRouter } from "./routes/tenants.ts";
 import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
 import { GoogleOidcVerifier } from "./auth/oidc/google-verifier.ts";
 
@@ -26,6 +27,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", createAuthRouter(oidcRegistry));
+app.use("/api/tenants", createTenantsRouter());
 
 const server = app.listen(port, () => {
   console.log(`API listening on http://localhost:${port}`);
