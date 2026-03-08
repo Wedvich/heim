@@ -6,17 +6,11 @@ import { registerHandler } from "../auth/register-handler.ts";
 import { COOKIE_NAME, cookieOptions, invalidateSession } from "../middleware/session.ts";
 import { writeAuditLog } from "../audit/audit-logger.ts";
 
-export function createAuthRouter(
-  oidcRegistry: OidcVerifierRegistry,
-  emailHmacKey?: string,
-): Router {
+export function createAuthRouter(oidcRegistry: OidcVerifierRegistry, emailHmacKey: string): Router {
   const router = Router();
 
   router.post("/login", loginHandler(oidcRegistry, pool));
-
-  if (emailHmacKey) {
-    router.post("/register", registerHandler(oidcRegistry, pool, emailHmacKey));
-  }
+  router.post("/register", registerHandler(oidcRegistry, pool, emailHmacKey));
 
   router.post("/logout", async (req, res) => {
     const sid = req.session?.sessionId;

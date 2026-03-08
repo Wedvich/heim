@@ -8,20 +8,21 @@ import { createTenantsRouter } from "./routes/tenants.ts";
 import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
 import { GoogleOidcVerifier } from "./auth/oidc/google-verifier.ts";
 
-const app = express();
-const port = 5244;
-
-const oidcRegistry = new OidcVerifierRegistry();
-
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
-if (googleClientId) {
-  oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
+if (!googleClientId) {
+  throw new Error("GOOGLE_CLIENT_ID is required");
 }
 
 const emailHmacKey = process.env.EMAIL_HMAC_KEY;
 if (!emailHmacKey) {
-  console.warn("EMAIL_HMAC_KEY not set — registration endpoint will be unavailable");
+  throw new Error("EMAIL_HMAC_KEY is required");
 }
+
+const app = express();
+const port = 5244;
+
+const oidcRegistry = new OidcVerifierRegistry();
+oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
 app.use(express.json());
 app.use(requestContextMiddleware);
