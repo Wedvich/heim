@@ -36,15 +36,10 @@ tests/access-control/
 │   - Omit SET LOCAL, query events → 0 rows (verify RLS default-deny)
 │   - Same pattern for memberships, forgettable_payloads, audit_log
 │
-├── cross-tenant-api.test.ts
-│   - Authenticate as user in tenant A
-│   - Attempt to access tenant B resources via API → 403/404
-│   - Attempt to switch session to tenant B without membership → rejected
-│
-└── unauthenticated-access.test.ts
-    - GET /api/auth/session without cookie → 401
-    - POST /api/auth/logout without cookie → clears cookie, returns ok (idempotent)
-    - GET /api/tenants/slug-available without valid session → 401
+└── cross-tenant-api.test.ts
+    - Authenticate as user in tenant A
+    - Attempt to access tenant B resources via API → 403/404
+    - Attempt to switch session to tenant B without membership → rejected
 ```
 
 ---
