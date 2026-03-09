@@ -32,9 +32,9 @@ export function LoginPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 80 }}>
       <h1>Sign in to Heim</h1>
-      <div ref={buttonRef} style={{ marginTop: 24 }} />
+      <div ref={buttonRef} style={{ marginTop: 24, colorScheme: "light" }} />
       {(gisError ?? errorMessage) && (
-        <p style={{ color: "#b91c1c", marginTop: 16 }}>{gisError ?? errorMessage}</p>
+        <p style={{ color: "var(--color-error)", marginTop: 16 }}>{gisError ?? errorMessage}</p>
       )}
     </div>
   );

@@ -61,7 +61,11 @@ export function useGoogleSignIn(returnTo: string) {
   const buttonRef = useCallback(
     (el: HTMLElement | null) => {
       if (!el || !initialized) return;
-      window.google.accounts.id.renderButton(el, { theme: "outline", size: "large" });
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      window.google.accounts.id.renderButton(el, {
+        theme: isDark ? "filled_black" : "outline",
+        size: "large",
+      });
     },
     [initialized],
   );

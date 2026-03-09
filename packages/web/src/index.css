@@ -1,0 +1,39 @@
+:root {
+  --color-bg: #fff;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #555;
+  --color-error: #b91c1c;
+  --color-link: #1a6be0;
+  --color-border: #d4d4d4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1a1a1a;
+    --color-text: #e5e5e5;
+    --color-text-secondary: #a3a3a3;
+    --color-error: #f87171;
+    --color-link: #60a5fa;
+    --color-border: #404040;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+a {
+  color: var(--color-link);
+}
