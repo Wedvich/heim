@@ -47,11 +47,6 @@ tests/access-control/
 │   - POST with state="/dashboard" → redirects to "/dashboard"
 │   - POST with state="" → redirects to "/"
 │
-├── csrf-enforcement.test.ts
-│   - POST /api/auth/google/callback without g_csrf_token cookie → redirect to /login?error=csrf_failed
-│   - POST with mismatched cookie vs body CSRF tokens → rejected
-│   - POST with matching tokens → proceeds to credential verification
-│
 └── unauthenticated-access.test.ts
     - GET /api/auth/session without cookie → 401
     - POST /api/auth/logout without cookie → clears cookie, returns ok (idempotent)
@@ -435,7 +430,6 @@ tests/error-handling/
 | **P1**   | Co-write invariant (CRUD + events) | A08            | Data integrity foundation                |
 | **P1**   | Cookie security flags              | A04            | Session hijacking prevention             |
 | **P1**   | Error response leakage             | A10, A02       | Information disclosure                   |
-| **P2**   | CSRF enforcement                   | A01            | Already implemented, verify it holds     |
 | **P2**   | Open redirect                      | A01            | Already implemented, verify it holds     |
 | **P2**   | Optimistic concurrency             | A08            | Race condition safety                    |
 | **P2**   | Rate limiting (once implemented)   | A06, A07       | Abuse prevention                         |
