@@ -55,5 +55,6 @@ Filter to a specific package with `-F`:
 - [docs/database.md](docs/database.md)
 - [docs/overview.md](docs/overview.md)
 - [docs/plan.md](docs/plan.md)
+- [docs/security.md](docs/security.md)
 - [docs/tech-stack.md](docs/tech-stack.md)
 - [docs/testing.md](docs/testing.md)

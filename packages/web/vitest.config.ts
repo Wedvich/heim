@@ -1,8 +1,8 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, defaultInclude } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
+    include: [...defaultInclude, "tests/**/*.test.ts?(x)"],
     passWithNoTests: true,
     reporters: process.env.CI ? ["default", "github-actions"] : ["default"],
   },
