@@ -25,6 +25,7 @@ const oidcRegistry = new OidcVerifierRegistry();
 oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(requestContextMiddleware);
 app.use(sessionMiddleware);
 

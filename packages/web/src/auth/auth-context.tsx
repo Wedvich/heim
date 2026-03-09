@@ -1,19 +1,17 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { fetchSession, postLogin, postLogout, type Session } from "./api";
+import { fetchSession, postLogout, type Session } from "./api";
 
 type Status = "loading" | "authenticated" | "unauthenticated";
 
 interface AuthState {
   status: Status;
   session: Session | null;
-  login: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState>({
   status: "loading",
   session: null,
-  login: async () => {},
   logout: async () => {},
 });
 
@@ -39,19 +37,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function login(credential: string) {
-    const s = await postLogin(credential);
-    setSession(s);
-    setStatus("authenticated");
-  }
-
   async function logout() {
     await postLogout();
     setSession(null);
     setStatus("unauthenticated");
   }
 
-  return <AuthContext value={{ status, session, login, logout }}>{children}</AuthContext>;
+  return <AuthContext value={{ status, session, logout }}>{children}</AuthContext>;
 }
 
 export function useAuth() {

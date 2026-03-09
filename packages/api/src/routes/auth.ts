@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db.ts";
 import type { OidcVerifierRegistry } from "../auth/oidc/registry.ts";
+import { googleCallbackHandler } from "../auth/google-callback-handler.ts";
 import { loginHandler } from "../auth/login-handler.ts";
 import { registerHandler } from "../auth/register-handler.ts";
 import { COOKIE_NAME, cookieOptions, invalidateSession } from "../middleware/session.ts";
@@ -14,6 +15,7 @@ export function createAuthRouter(oidcRegistry: OidcVerifierRegistry, emailHmacKe
     next();
   });
 
+  router.post("/google/callback", googleCallbackHandler(oidcRegistry, pool));
   router.post("/login", loginHandler(oidcRegistry, pool));
   router.post("/register", registerHandler(oidcRegistry, pool, emailHmacKey));
 

@@ -14,7 +14,7 @@ export function cookieOptions(): CookieOptions {
   };
 }
 
-function parseCookie(header: string, name: string): string | undefined {
+export function parseCookie(header: string, name: string): string | undefined {
   for (const part of header.split(";")) {
     const [key, ...rest] = part.split("=");
     if (key?.trim() === name) return rest.join("=").trim();

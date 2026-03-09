@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 declare global {
   interface Window {
@@ -7,7 +7,9 @@ declare global {
         id: {
           initialize: (config: {
             client_id: string;
-            callback: (response: { credential: string }) => void;
+            ux_mode: "redirect";
+            login_uri: string;
+            state?: string;
           }) => void;
           renderButton: (element: HTMLElement, options: { theme?: string; size?: string }) => void;
         };
@@ -16,11 +18,9 @@ declare global {
   }
 }
 
-export function useGoogleSignIn(onCredential: (credential: string) => void) {
+export function useGoogleSignIn(returnTo: string) {
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const onCredentialRef = useRef(onCredential);
-  onCredentialRef.current = onCredential;
 
   useEffect(() => {
     const clientId = import.meta.env.GOOGLE_CLIENT_ID;
@@ -29,10 +29,14 @@ export function useGoogleSignIn(onCredential: (credential: string) => void) {
       return;
     }
 
+    const loginUri = window.location.origin + "/api/auth/google/callback";
+
     function initializeGis() {
       window.google.accounts.id.initialize({
         client_id: clientId,
-        callback: (response) => onCredentialRef.current(response.credential),
+        ux_mode: "redirect",
+        login_uri: loginUri,
+        state: returnTo,
       });
       setInitialized(true);
     }
@@ -52,7 +56,7 @@ export function useGoogleSignIn(onCredential: (credential: string) => void) {
     script.onload = () => initializeGis();
     script.onerror = () => setError("Failed to load Google Sign-In");
     document.head.appendChild(script);
-  }, []);
+  }, [returnTo]);
 
   const buttonRef = useCallback(
     (el: HTMLElement | null) => {
