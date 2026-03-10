@@ -1,3 +1,5 @@
+import { apiFetch } from "../api/fetch.ts";
+
 export interface Session {
   principal: { id: string; type: string };
   tenant: { id: string; name: string; slug: string } | null;
@@ -6,12 +8,12 @@ export interface Session {
 }
 
 export async function fetchSession(): Promise<Session | null> {
-  const res = await fetch("/api/auth/session");
+  const res = await apiFetch("/api/auth/session");
   if (res.status === 401) return null;
   if (!res.ok) throw new Error(`session fetch failed: ${res.status}`);
   return res.json() as Promise<Session>;
 }
 
 export async function postLogout(): Promise<void> {
-  await fetch("/api/auth/logout", { method: "POST" });
+  await apiFetch("/api/auth/logout", { method: "POST" });
 }
