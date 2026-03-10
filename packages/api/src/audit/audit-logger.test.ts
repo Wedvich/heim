@@ -2,6 +2,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "./audit-logger.ts";
 import type { Pool } from "pg";
 
+vi.mock("../logger.ts", () => {
+  const auditChild = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
+  return {
+    logger: {
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+      child: vi.fn(() => auditChild),
+      _auditChild: auditChild,
+    },
+  };
+});
+
+import { logger } from "../logger.ts";
+
+const mockAuditLogger = (
+  logger as unknown as { _auditChild: Record<string, ReturnType<typeof vi.fn>> }
+)._auditChild;
+
 function makePool(reject = false) {
   const query = reject
     ? vi.fn().mockReturnValue(Promise.reject(new Error("db error")))
@@ -55,16 +75,14 @@ describe("writeAuditLog", () => {
 
   it("is fire-and-forget: db errors are caught and logged, not thrown", async () => {
     const pool = makePool(true);
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     // Must not throw
     expect(() =>
       writeAuditLog(pool, { principalId: SYSTEM_PRINCIPAL_ID, action: "auth.logout" }),
     ).not.toThrow();
     await new Promise((r) => setTimeout(r, 0));
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(mockAuditLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
       "Audit log write failed",
-      expect.any(Error),
-      expect.any(Object),
     );
   });
 });

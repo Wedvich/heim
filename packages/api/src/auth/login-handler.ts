@@ -38,7 +38,7 @@ export function loginHandler(registry: OidcVerifierRegistry, db: Pool): RequestH
           return;
         }
         if (err instanceof TokenVerificationError) {
-          console.warn("Token verification failed", { provider, cause: err.cause });
+          req.log.warn({ provider, err }, "Token verification failed");
           writeAuditLog(db, {
             principalId: SYSTEM_PRINCIPAL_ID,
             action: "auth.login.failure",
@@ -96,7 +96,7 @@ export function loginHandler(registry: OidcVerifierRegistry, db: Pool): RequestH
         tenant: { id: membership.tenant_id },
       });
     } catch (err) {
-      console.error("Unexpected error in login handler", err);
+      req.log.error({ err }, "Unexpected error in login handler");
       res.status(500).json({ error: "internal_error" });
     }
   };

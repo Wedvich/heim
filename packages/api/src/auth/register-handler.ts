@@ -79,7 +79,7 @@ export function registerHandler(
             return;
           }
           if (err instanceof TokenVerificationError) {
-            console.warn("Token verification failed", { provider, cause: err.cause });
+            req.log.warn({ provider, err }, "Token verification failed");
             writeAuditLog(db, {
               principalId: SYSTEM_PRINCIPAL_ID,
               action: "auth.register.failure",
@@ -255,7 +255,7 @@ export function registerHandler(
         client.release();
       }
     } catch (err) {
-      console.error("Unexpected error in register handler", err);
+      req.log.error({ err }, "Unexpected error in register handler");
       res.status(500).json({ error: "internal_error" });
     }
   };

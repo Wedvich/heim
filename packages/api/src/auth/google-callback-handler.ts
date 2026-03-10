@@ -37,7 +37,7 @@ export function googleCallbackHandler(registry: OidcVerifierRegistry, db: Pool):
         identity = await registry.verify("google", credential);
       } catch (err) {
         if (err instanceof TokenVerificationError) {
-          console.warn("Token verification failed", { provider: "google", cause: err.cause });
+          req.log.warn({ provider: "google", err }, "Token verification failed");
           writeAuditLog(db, {
             principalId: SYSTEM_PRINCIPAL_ID,
             action: "auth.login.failure",
@@ -93,7 +93,7 @@ export function googleCallbackHandler(registry: OidcVerifierRegistry, db: Pool):
       res.cookie(COOKIE_NAME, token, cookieOptions());
       res.redirect(returnTo);
     } catch (err) {
-      console.error("Unexpected error in Google callback handler", err);
+      req.log.error({ err }, "Unexpected error in Google callback handler");
       res.redirect(`/login?error=internal`);
     }
   };

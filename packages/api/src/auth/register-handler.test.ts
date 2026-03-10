@@ -68,9 +68,21 @@ function makeRes() {
   return { res: res as Response, json, status, cookie };
 }
 
+function makeLog() {
+  return {
+    fatal: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn(),
+  };
+}
+
 function makeReq(body: Record<string, unknown>): Request {
   return {
     body,
+    log: makeLog(),
     requestContext: { userAgent: "TestAgent/1.0" },
   } as unknown as Request;
 }

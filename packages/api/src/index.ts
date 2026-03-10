@@ -1,6 +1,8 @@
 import express from "express";
 import { pool } from "./db.ts";
 import "./session-context.ts";
+import { logger } from "./logger.ts";
+import { requestLogger } from "./middleware/request-logger.ts";
 import { requestContextMiddleware } from "./middleware/request-context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
 import { createAuthRouter } from "./routes/auth.ts";
@@ -19,6 +21,9 @@ if (!emailHmacKey) {
 }
 
 const app = express();
+app.set("etag", false);
+app.set("x-powered-by", false);
+
 const port = 5244;
 
 const oidcRegistry = new OidcVerifierRegistry();
@@ -26,6 +31,7 @@ oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(requestLogger);
 app.use(requestContextMiddleware);
 app.use(sessionMiddleware);
 
@@ -37,7 +43,7 @@ app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey));
 app.use("/api/tenants", createTenantsRouter());
 
 const server = app.listen(port, () => {
-  console.log(`API listening on http://localhost:${port}`);
+  logger.info("API listening on port %d", port);
 });
 
 function shutdown() {
