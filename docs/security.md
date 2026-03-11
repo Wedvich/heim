@@ -14,6 +14,10 @@ Compose) + supertest for HTTP assertions.
 - `validateReturnTo()` blocks open redirects (only relative paths starting with `/`)
 - CSRF double-submit check on Google callback
 - Session cookie: `httpOnly`, `secure` (prod), `sameSite: lax`
+- CORS handled by Express middleware (`cors` package) reading allowed origins from the `CORS_ORIGIN`
+  env var. nginx does not need to duplicate CORS headers.
+- Session fixation is N/A — no pre-authentication session exists. The session token is created fresh
+  on login via `crypto.randomBytes(32)`, so there is nothing to fixate.
 
 ### Gaps
 
@@ -21,9 +25,6 @@ Compose) + supertest for HTTP assertions.
    ([docs/auth.md](auth.md)) but not wired in — any authenticated principal can hit any endpoint.
 2. **RLS depends on app-layer discipline.** If any query runs without `SET LOCAL app.current_tenant_id`,
    RLS silently allows nothing (empty result) or everything (if using BYPASSRLS role).
-3. **No CORS configuration.** Express doesn't set CORS headers; relies on nginx in prod. A misconfigured
-   reverse proxy could allow cross-origin API access.
-4. **Session is not rotated after login.** Low risk since tokens are server-generated, but worth noting.
 
 ### Suggested integration tests
 
@@ -51,15 +52,15 @@ tests/access-control/
 - `Cache-Control: no-store` on auth routes
 - `express.json()` with default 100KB limit
 - Docker Compose uses hardcoded `POSTGRES_PASSWORD: "heim"` (dev only)
+- Helmet middleware applied as the first middleware in Express, covering `X-Frame-Options`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, and `Content-Security-Policy`. HSTS is
+  deferred to the nginx/TLS termination layer.
+- Global error handler returns generic JSON 500 — no stack trace or internals leaked to clients.
+- PgAdmin exposed on port 5050 in dev compose — not deployed to production.
 
 ### Gaps
 
-1. **No security headers.** No `helmet` or equivalent. Missing: `X-Frame-Options`,
-   `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, `Referrer-Policy`,
-   `Content-Security-Policy`.
-2. **No explicit `Content-Type` on error responses.** Express sets `application/json` automatically for
-   `.json()` calls, but edge cases might not.
-3. **PgAdmin exposed on port 5050** without auth beyond default password.
+None — all previously identified gaps have been resolved.
 
 ### Suggested integration tests
 
@@ -89,12 +90,13 @@ tests/security-headers/
 - Minimal dependency footprint: `express`, `pg`, `google-auth-library` (API); `react`, `react-dom`,
   `react-router` (web)
 - `yarn.lock` committed (Yarn 4.13.0)
+- Dependabot configured (`.github/dependabot.yml`) with weekly scans and grouped PRs for production
+  and dev dependencies.
 
 ### Gaps
 
-1. **No automated dependency scanning.** No Dependabot, Snyk, or `yarn audit` in CI.
-2. **No SBOM generation.**
-3. **No integrity checks** beyond yarn.lock checksums.
+1. **No SBOM generation.**
+2. **No integrity checks** beyond yarn.lock checksums.
 
 ### Suggested CI checks
 
@@ -335,14 +337,16 @@ tests/integrity/
 - `audit_log` table captures auth events (login success/failure, logout)
 - PII guardrails: typed `AuditDetail` interface restricts fields
 - `events.metadata` has PII guardrail + size `CHECK` constraint
+- Structured logging via pino + pino-http (request logging with request IDs)
 
 ### Gaps
 
 1. **No alerting or monitoring.** Audit log is written but never read programmatically.
 2. **No IP address logging** (deferred until scrubbing mechanism exists — documented).
-3. **No correlation_id on audit entries yet** (documented TODO).
-4. **`console.error` for unexpected errors** — no structured logging, no log aggregation.
-5. **Failed login patterns not detected.** 100 failed logins from one IP produce 100 audit rows but no
+3. **Correlation ID not yet threaded through to audit entries.** `correlation_id` field exists in the
+   `AuditDetail` type and `correlationId` is available in request context, but callers don't pass it
+   through yet.
+4. **Failed login patterns not detected.** 100 failed logins from one IP produce 100 audit rows but no
    alert.
 
 ### Suggested integration tests
@@ -372,15 +376,15 @@ tests/logging/
 - Google callback handler has try/catch with redirect to `/login?error=internal`
 - Session middleware silently continues if no cookie (graceful degradation)
 - DB pool handles connection errors
+- Global error handler catches unhandled route errors and returns generic JSON 500
 
 ### Gaps
 
-1. **No global error handler in Express.** Unhandled errors in route handlers could leak stack traces.
-2. **No graceful handling of DB pool exhaustion.** If all connections are in use, requests hang until
+1. **No graceful handling of DB pool exhaustion.** If all connections are in use, requests hang until
    timeout.
-3. **No `statement_timeout` on DB queries.** A slow query blocks a connection indefinitely.
-4. **Shutdown handler doesn't set a timeout.** `server.close()` waits forever for in-flight requests.
-5. **Session cache grows unbounded.** No max-size eviction — a memory leak vector under high session
+2. **No `statement_timeout` on DB queries.** A slow query blocks a connection indefinitely.
+3. **Shutdown handler doesn't set a timeout.** `server.close()` waits forever for in-flight requests.
+4. **Session cache grows unbounded.** No max-size eviction — a memory leak vector under high session
    churn.
 
 ### Suggested integration tests
@@ -432,11 +436,8 @@ tests/error-handling/
 These gaps require code changes before they can be tested:
 
 1. **Rate limiting** — no middleware exists; add before auth endpoints at minimum.
-2. **Security headers** — add `helmet` or equivalent middleware.
-3. **Global Express error handler** — add `app.use((err, req, res, next) => ...)` returning generic JSON.
-4. **Forgettable payload encryption** — schema ready, code missing.
-5. **ABAC enforcement middleware** — policy engine designed, not wired into routes.
-6. **Structured logging** — replace `console.error`/`console.warn` with a structured logger.
+2. **Forgettable payload encryption** — schema ready, code missing.
+3. **ABAC enforcement middleware** — policy engine designed, not wired into routes.
 
 ---
 
@@ -446,8 +447,6 @@ These gaps require code changes before they can be tested:
 
 - No rate limiting on any endpoint — the most repeated finding across A01, A06, A07
 - Forgettable payload encryption not implemented — schema ready, zero code
-- No global Express error handler — unhandled errors could leak internals
-- No security headers — no helmet or equivalent
 
 **Strongest areas:**
 

@@ -1,4 +1,6 @@
+import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import { pool } from "./db.ts";
 import "./session-context.ts";
 import { logger } from "./logger.ts";
@@ -20,6 +22,12 @@ if (!emailHmacKey) {
   throw new Error("EMAIL_HMAC_KEY is required");
 }
 
+const corsOrigin = process.env.CORS_ORIGIN;
+if (!corsOrigin) {
+  throw new Error("CORS_ORIGIN is required");
+}
+const origin = corsOrigin.split(",").map((o) => o.trim());
+
 const app = express();
 app.set("etag", false);
 app.set("x-powered-by", false);
@@ -29,6 +37,8 @@ const port = 5244;
 const oidcRegistry = new OidcVerifierRegistry();
 oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
+app.use(helmet({ hsts: false }));
+app.use(cors({ origin, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(requestLogger);
@@ -41,6 +51,15 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey));
 app.use("/api/tenants", createTenantsRouter());
+
+app.use(
+  (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    logger.error(err, "Unhandled error");
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
 
 const server = app.listen(port, () => {
   logger.info("API listening on port %d", port);

@@ -13,14 +13,17 @@
   "dependencies": {
     "@heim/domain": "workspace:*",
     "@heim/logging": "workspace:*",
+    "cors": "^2.8.6",
     "express": "^5.1.0",
     "google-auth-library": "^9.0.0",
+    "helmet": "^8.1.0",
     "pg": "^8.19.0",
     "pino": "^9.0.0",
     "pino-http": "^10.0.0"
   },
   "devDependencies": {
     "@heim/infra": "workspace:*",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
     "@types/pg": "^8.18.0",
     "@types/supertest": "^7.2.0",
