@@ -90,8 +90,7 @@ tests/security-headers/
 - Minimal dependency footprint: `express`, `pg`, `google-auth-library` (API); `react`, `react-dom`,
   `react-router` (web)
 - `yarn.lock` committed (Yarn 4.13.0)
-- Dependabot configured (`.github/dependabot.yml`) with weekly scans and grouped PRs for production
-  and dev dependencies.
+- Dependabot not yet configured (`.github/dependabot.yml` does not exist — TODO).
 
 ### Gaps
 

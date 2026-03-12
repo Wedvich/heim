@@ -104,6 +104,26 @@ Server-side sessions for authenticated users. Each session is identified by an o
 
 No RLS — sessions are cross-tenant like `principals`, `identities`, and `crypto_keys`. Access control is application-layer. No soft delete — logout deletes the row, history lives in `audit_log`.
 
+### `invites`
+
+Single-use invite tokens for registration. An invite grants the holder permission to create an account in the specified tenant with a given role. Used by the registration flow.
+
+| Column       | Type                   | Notes                                                                       |
+| ------------ | ---------------------- | --------------------------------------------------------------------------- |
+| `id`         | UUID PK                | `gen_random_uuid()`                                                         |
+| `token`      | text                   | Required, unique. Opaque crypto-random token sent in the invite link.       |
+| `tenant_id`  | UUID FK → `tenants`    | Nullable. The tenant the invite is for. Null for system-level invites.      |
+| `role`       | text                   | Required, default `'member'`. The role the invitee will receive on joining. |
+| `created_by` | UUID FK → `principals` | Required. The principal who created the invite.                             |
+| `used_by`    | UUID FK → `principals` | Nullable. Set when the invite is redeemed.                                  |
+| `used_at`    | timestamptz            | Nullable. Set when the invite is redeemed.                                  |
+| `expires_at` | timestamptz            | Required. Application enforces expiry on lookup.                            |
+| `created_at` | timestamptz            |                                                                             |
+
+**Indexes:** on `token` for fast lookup by invite link; on `expires_at` for cleanup of expired invites.
+
+No soft delete — redeemed and expired invites are retained for audit purposes. `used_by` / `used_at` indicate redemption state.
+
 ### `events` (partitioned)
 
 The event store. Bitemporal, LIST-partitioned by `tenant_id`. Each tenant gets its own partition, created atomically in the same transaction that inserts the tenant CRUD row.
@@ -200,7 +220,7 @@ Flat, append-only table for observability. Captures two kinds of entries:
 | `id`            | UUID PK     | `gen_random_uuid()`                                                                |
 | `tenant_id`     | UUID        | Nullable. Null for system-level entries (e.g. failed login before tenant context). |
 | `principal_id`  | UUID        | Required. The system principal is used for system-level actions.                   |
-| `action`        | text        | Required. Dot-namespaced (e.g. `'user.logged_in'`, `'tenant.created'`).            |
+| `action`        | text        | Required. Dot-namespaced (e.g. `'auth.login.success'`, `'auth.register.failure'`). |
 | `resource_type` | text        | Nullable (e.g. `'principal'`, `'tenant'`, `'membership'`).                         |
 | `resource_id`   | UUID        | Nullable. The affected resource's ID.                                              |
 | `detail`        | jsonb       | Default `{}`. Additional context (IP, user agent, provider name, etc.).            |
@@ -211,7 +231,7 @@ Flat, append-only table for observability. Captures two kinds of entries:
 
 No FKs enforced — append-only observability table, decoupled from other table lifecycles. No soft delete — retention policy (time-based cleanup) is the deletion mechanism.
 
-> **PII guardrail:** The `detail` field MUST NOT contain PII. The application layer enforces this via a typed builder that only permits an explicit allow-list of fields (e.g., `ip`, `user_agent`, `provider`, `request_id`). Note that IP addresses are PII under GDPR — the retention policy must account for this, and the "forget a principal" flow should scrub or anonymize their audit log entries.
+> **PII guardrail:** The `detail` field MUST NOT contain PII. The application layer enforces this via a typed `AuditDetail` interface that only permits an explicit allow-list of fields: `correlation_id`, `user_agent`, `provider`, `reason`.
 
 Write volume is low — entries come from auth actions (login, logout, token refresh, identity linking) and audit shadows of CRUD mutations. The table starts unpartitioned. If retention cleanup or table size warrants it, range-partition by `created_at` (monthly) later for instant `DROP PARTITION` retention.
 
@@ -262,9 +282,11 @@ erDiagram
     principals ||--o{ sessions : "has"
     principals ||--o{ forgettable_payloads : "owns"
     principals ||--o{ events : "acted in"
+    principals ||--o{ invites : "created"
     tenants ||--o{ memberships : "has"
     tenants ||--o{ sessions : "has"
     tenants ||--o{ events : "partitions"
+    tenants ||--o{ invites : "has"
     events ||--o| forgettable_payloads : "has"
 
     principals {
@@ -305,6 +327,18 @@ erDiagram
         uuid tenant_id FK
         timestamptz created_at
         timestamptz expires_at
+    }
+
+    invites {
+        uuid id PK
+        text token UK
+        uuid tenant_id FK
+        text role
+        uuid created_by FK
+        uuid used_by FK
+        timestamptz used_at
+        timestamptz expires_at
+        timestamptz created_at
     }
 
     events {

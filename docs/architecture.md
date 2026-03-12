@@ -68,11 +68,11 @@ Because the event store is bitemporal and projections are rebuildable, the syste
 
 ## Deployment Topology
 
-**Production** (`compose.prod.yml`):
+**Production (planned):**
 
 ```
 Client → nginx :80
-           ├── /api/* → Express container :3000
+           ├── /api/* → Express container :5244
            └── /*     → static files (Vite build output)
 ```
 

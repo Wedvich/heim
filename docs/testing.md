@@ -16,17 +16,11 @@ The bulk of tests are **integration tests** that exercise domain behavior throug
 ## Test Organization
 
 ```
-packages/domain/tests/
-├── auth/
-│   ├── user.test.ts          # User aggregate behavior
-│   ├── tenant.test.ts        # Tenant aggregate behavior
-│   ├── membership.test.ts    # Membership behavior
-│   ├── login-flow.test.ts    # Integration: full login scenarios
-│   └── policies.test.ts      # ABAC policy evaluation
-└── event-store/
-    ├── append.test.ts
-    ├── bitemporal.test.ts
-    └── projections.test.ts
+packages/api/tests/
+└── access-control/
+    ├── csrf-enforcement.test.ts        # CSRF double-submit check on Google callback
+    ├── open-redirect.test.ts           # validateReturnTo blocks open redirects
+    └── unauthenticated-access.test.ts  # Protected endpoints reject unauthenticated requests
 ```
 
 ## Dev Bypass for Testing

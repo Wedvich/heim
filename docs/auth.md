@@ -40,7 +40,7 @@
 1. User authenticates via Google/Apple → backend receives ID token
 2. Validate ID token, extract: provider, sub, email?, email_verified?
 3. Lookup Identity by (provider, sub)
-   → FOUND: load linked User, issue JWT pair, done
+   → FOUND: load linked User, create session, done
    → NOT FOUND:
      4. If email present AND verified by provider:
         → Lookup User by email
@@ -70,11 +70,11 @@ Auth actions (login success/failure, logout) are written to the `audit_log` tabl
 
 ## Dev Bypass Auth
 
-For local development and testing, a `DEV_AUTH_BYPASS=true` environment variable enables:
+A `DEV_AUTH_BYPASS=true` environment variable is planned to enable a dev-only login path:
 
 - A `/dev/login` endpoint that accepts a `userId` and creates a session cookie without OIDC
 - Only available when `NODE_ENV=development`
-- Documented in CLAUDE.md so agents can use it for testing
+- **Not yet implemented** — the env var is defined but unused.
 
 ## ABAC Policy Engine (Initial Shape)
 
