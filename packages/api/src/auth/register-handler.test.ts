@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Request, Response } from "express";
 import { registerHandler } from "./register-handler.ts";
-import { TokenVerificationError, UnknownProviderError } from "./oidc/types.ts";
-import type { OidcVerifierRegistry } from "./oidc/registry.ts";
+import { TokenVerificationError } from "./oidc/types.ts";
+import { makeClient, makePool, makeReq, makeRes, makeRegistry } from "../test-helpers.ts";
 
 vi.mock("./identity-repository.ts", () => ({
   findPrincipalByProviderIdentity: vi.fn(),
@@ -34,58 +33,6 @@ const mockCreateIdentity = vi.mocked(createIdentity);
 const mockFindInvite = vi.mocked(findValidInvite);
 const mockMarkInviteUsed = vi.mocked(markInviteUsed);
 const mockWriteAuditLog = vi.mocked(writeAuditLog);
-
-function makeRegistry(overrides?: { verify?: ReturnType<typeof vi.fn> }): OidcVerifierRegistry {
-  return {
-    verify: overrides?.verify ?? vi.fn(),
-    register: vi.fn(),
-    registeredProviders: [],
-  } as unknown as OidcVerifierRegistry;
-}
-
-function makeClient() {
-  return {
-    query: vi.fn().mockResolvedValue({ rows: [] }),
-    release: vi.fn(),
-  };
-}
-
-function makePool(client = makeClient()) {
-  return {
-    query: vi.fn().mockResolvedValue({ rows: [] }),
-    connect: vi.fn().mockResolvedValue(client),
-  } as unknown as import("pg").Pool;
-}
-
-function makeRes() {
-  const json = vi.fn();
-  const cookie = vi.fn();
-  const res = {} as Partial<Response>;
-  const status = vi.fn().mockReturnValue(res);
-  res.json = json;
-  res.status = status as unknown as Response["status"];
-  res.cookie = cookie as unknown as Response["cookie"];
-  return { res: res as Response, json, status, cookie };
-}
-
-function makeLog() {
-  return {
-    fatal: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn(),
-    trace: vi.fn(),
-  };
-}
-
-function makeReq(body: Record<string, unknown>): Request {
-  return {
-    body,
-    log: makeLog(),
-    requestContext: { userAgent: "TestAgent/1.0" },
-  } as unknown as Request;
-}
 
 const noop = vi.fn();
 const EMAIL_HMAC_KEY = "test-key";
@@ -127,7 +74,7 @@ describe("registerHandler", () => {
 
   it("returns 400 for invalid invite", async () => {
     mockFindInvite.mockResolvedValue(null);
-    const handler = registerHandler(makeRegistry(), makePool(), EMAIL_HMAC_KEY);
+    const handler = registerHandler(makeRegistry(), makePool(makeClient()), EMAIL_HMAC_KEY);
     const { res, status, json } = makeRes();
     await handler(
       makeReq({ provider: "google", credential: "tok", inviteToken: "bad" }),
@@ -147,10 +94,8 @@ describe("registerHandler", () => {
 
   it("returns 400 for unknown provider", async () => {
     mockFindInvite.mockResolvedValue(validInvite);
-    const registry = makeRegistry({
-      verify: vi.fn().mockRejectedValue(new UnknownProviderError("github")),
-    });
-    const handler = registerHandler(registry, makePool(), EMAIL_HMAC_KEY);
+    const registry = makeRegistry(vi.fn());
+    const handler = registerHandler(registry, makePool(makeClient()), EMAIL_HMAC_KEY);
     const { res, status } = makeRes();
     await handler(
       makeReq({ provider: "github", credential: "tok", inviteToken: "inv" }),
@@ -169,10 +114,10 @@ describe("registerHandler", () => {
 
   it("returns 401 for token verification failure", async () => {
     mockFindInvite.mockResolvedValue(validInvite);
-    const registry = makeRegistry({
-      verify: vi.fn().mockRejectedValue(new TokenVerificationError("google", "expired")),
-    });
-    const handler = registerHandler(registry, makePool(), EMAIL_HMAC_KEY);
+    const registry = makeRegistry(
+      vi.fn().mockRejectedValue(new TokenVerificationError("google", "expired")),
+    );
+    const handler = registerHandler(registry, makePool(makeClient()), EMAIL_HMAC_KEY);
     const { res, status } = makeRes();
     await handler(
       makeReq({ provider: "google", credential: "bad", inviteToken: "inv" }),
@@ -184,9 +129,9 @@ describe("registerHandler", () => {
 
   it("returns 409 when identity already registered", async () => {
     mockFindInvite.mockResolvedValue(validInvite);
-    const registry = makeRegistry({ verify: vi.fn().mockResolvedValue(validIdentity) });
+    const registry = makeRegistry(vi.fn().mockResolvedValue(validIdentity));
     mockFindPrincipal.mockResolvedValue({ principalId: "existing-p" });
-    const handler = registerHandler(registry, makePool(), EMAIL_HMAC_KEY);
+    const handler = registerHandler(registry, makePool(makeClient()), EMAIL_HMAC_KEY);
     const { res, status, json } = makeRes();
     await handler(
       makeReq({ provider: "google", credential: "tok", inviteToken: "inv" }),
@@ -199,15 +144,16 @@ describe("registerHandler", () => {
 
   it("happy path: joins existing tenant", async () => {
     mockFindInvite.mockResolvedValue(validInvite);
-    const registry = makeRegistry({ verify: vi.fn().mockResolvedValue(validIdentity) });
+    const registry = makeRegistry(vi.fn().mockResolvedValue(validIdentity));
     mockFindPrincipal.mockResolvedValue(null);
     mockFindByEmail.mockResolvedValue(null);
     mockCreateIdentity.mockResolvedValue({ id: "identity-id" });
 
     const client = makeClient();
+    const mockQuery = vi.mocked(client.query);
     // principal INSERT
-    client.query.mockResolvedValueOnce({ rows: [] }); // BEGIN
-    client.query.mockResolvedValueOnce({ rows: [{ id: "new-principal" }] }); // principal insert (called by findPrincipalByEmailHash returning null path)
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never); // BEGIN
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: "new-principal" }] } as never); // principal insert
 
     const pool = makePool(client);
     const handler = registerHandler(registry, pool, EMAIL_HMAC_KEY);
@@ -237,22 +183,23 @@ describe("registerHandler", () => {
   it("happy path: creates new tenant", async () => {
     const createTenantInvite = { ...validInvite, tenantId: null };
     mockFindInvite.mockResolvedValue(createTenantInvite);
-    const registry = makeRegistry({ verify: vi.fn().mockResolvedValue(validIdentity) });
+    const registry = makeRegistry(vi.fn().mockResolvedValue(validIdentity));
     mockFindPrincipal.mockResolvedValue(null);
     mockFindByEmail.mockResolvedValue(null);
     mockCreateIdentity.mockResolvedValue({ id: "identity-id" });
 
     const client = makeClient();
-    client.query
-      .mockResolvedValueOnce({ rows: [] }) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ id: "new-principal" }] }) // principal insert
-      .mockResolvedValueOnce({ rows: [] }) // slug check
-      .mockResolvedValueOnce({ rows: [{ id: "new-tenant" }] }) // tenant insert
-      .mockResolvedValueOnce({ rows: [] }) // events partition
-      .mockResolvedValueOnce({ rows: [] }) // forgettable partition
-      .mockResolvedValueOnce({ rows: [] }) // membership insert
-      .mockResolvedValueOnce({ rows: [] }) // session insert
-      .mockResolvedValueOnce({ rows: [] }); // COMMIT
+    const mockQuery = vi.mocked(client.query);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] } as never) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ id: "new-principal" }] } as never) // principal insert
+      .mockResolvedValueOnce({ rows: [] } as never) // slug check
+      .mockResolvedValueOnce({ rows: [{ id: "new-tenant" }] } as never) // tenant insert
+      .mockResolvedValueOnce({ rows: [] } as never) // events partition
+      .mockResolvedValueOnce({ rows: [] } as never) // forgettable partition
+      .mockResolvedValueOnce({ rows: [] } as never) // membership insert
+      .mockResolvedValueOnce({ rows: [] } as never) // session insert
+      .mockResolvedValueOnce({ rows: [] } as never); // COMMIT
 
     const pool = makePool(client);
     const handler = registerHandler(registry, pool, EMAIL_HMAC_KEY);
@@ -270,13 +217,14 @@ describe("registerHandler", () => {
   it("returns 400 when creating tenant without tenantName", async () => {
     const createTenantInvite = { ...validInvite, tenantId: null };
     mockFindInvite.mockResolvedValue(createTenantInvite);
-    const registry = makeRegistry({ verify: vi.fn().mockResolvedValue(validIdentity) });
+    const registry = makeRegistry(vi.fn().mockResolvedValue(validIdentity));
     mockFindPrincipal.mockResolvedValue(null);
     mockFindByEmail.mockResolvedValue(null);
 
     const client = makeClient();
-    client.query.mockResolvedValueOnce({ rows: [] }); // BEGIN
-    client.query.mockResolvedValueOnce({ rows: [{ id: "new-p" }] }); // principal
+    const mockQuery = vi.mocked(client.query);
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never); // BEGIN
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: "new-p" }] } as never); // principal
 
     const pool = makePool(client);
     const handler = registerHandler(registry, pool, EMAIL_HMAC_KEY);
@@ -294,13 +242,14 @@ describe("registerHandler", () => {
 
   it("email merge: reuses existing principal", async () => {
     mockFindInvite.mockResolvedValue(validInvite);
-    const registry = makeRegistry({ verify: vi.fn().mockResolvedValue(validIdentity) });
+    const registry = makeRegistry(vi.fn().mockResolvedValue(validIdentity));
     mockFindPrincipal.mockResolvedValue(null);
     mockFindByEmail.mockResolvedValue({ principalId: "existing-principal" });
     mockCreateIdentity.mockResolvedValue({ id: "identity-id" });
 
     const client = makeClient();
-    client.query.mockResolvedValueOnce({ rows: [] }); // BEGIN
+    const mockQuery = vi.mocked(client.query);
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never); // BEGIN
 
     const pool = makePool(client);
     const handler = registerHandler(registry, pool, EMAIL_HMAC_KEY);
@@ -323,12 +272,11 @@ describe("registerHandler", () => {
 
   it("rolls back on unexpected error", async () => {
     mockFindInvite.mockResolvedValue(validInvite);
-    const registry = makeRegistry({
-      verify: vi.fn().mockRejectedValue(new Error("unexpected")),
-    });
+    const registry = makeRegistry(vi.fn().mockRejectedValue(new Error("unexpected")));
 
     const client = makeClient();
-    client.query.mockResolvedValueOnce({ rows: [] }); // BEGIN
+    const mockQuery = vi.mocked(client.query);
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never); // BEGIN
 
     const pool = makePool(client);
     const handler = registerHandler(registry, pool, EMAIL_HMAC_KEY);

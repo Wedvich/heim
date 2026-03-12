@@ -1,20 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Request, Response } from "express";
+import type { Request } from "express";
 import { lightAuthMiddleware } from "./light-auth.ts";
-import type { Pool } from "pg";
-
-function makePool(rows: unknown[] = []) {
-  return { query: vi.fn().mockResolvedValue({ rows }) } as unknown as Pool;
-}
-
-function makeRes() {
-  const json = vi.fn();
-  const res = {} as Partial<Response>;
-  const status = vi.fn().mockReturnValue(res);
-  res.json = json;
-  res.status = status as unknown as Response["status"];
-  return { res: res as Response, json, status };
-}
+import { makePool, makeRes } from "../test-helpers.ts";
 
 const next = vi.fn();
 
@@ -39,7 +26,7 @@ describe("lightAuthMiddleware", () => {
   });
 
   it("falls back to invite token from Authorization header", async () => {
-    const pool = makePool([{ id: "inv-1", tenant_id: "t-1" }]);
+    const pool = makePool({ rows: [{ id: "inv-1", tenant_id: "t-1" }] });
     const mw = lightAuthMiddleware(pool);
     const req = {
       session: undefined,
@@ -54,7 +41,7 @@ describe("lightAuthMiddleware", () => {
   });
 
   it("supports null tenantId for create-tenant invites", async () => {
-    const pool = makePool([{ id: "inv-2", tenant_id: null }]);
+    const pool = makePool({ rows: [{ id: "inv-2", tenant_id: null }] });
     const mw = lightAuthMiddleware(pool);
     const req = {
       session: undefined,
@@ -81,7 +68,7 @@ describe("lightAuthMiddleware", () => {
   });
 
   it("returns 401 when invite token is invalid", async () => {
-    const pool = makePool([]);
+    const pool = makePool({ rows: [] });
     const mw = lightAuthMiddleware(pool);
     const req = {
       session: undefined,

@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Request, Response } from "express";
 import { loginHandler } from "./login-handler.ts";
-import { TokenVerificationError, UnknownProviderError } from "./oidc/types.ts";
-import type { OidcVerifierRegistry } from "./oidc/registry.ts";
+import { TokenVerificationError } from "./oidc/types.ts";
+import { makePool, makeReq, makeRes, makeRegistry } from "../test-helpers.ts";
 
 vi.mock("./identity-repository.ts", () => ({
   findPrincipalByProviderIdentity: vi.fn(),
@@ -24,50 +23,6 @@ import { writeAuditLog, SYSTEM_PRINCIPAL_ID } from "../audit/audit-logger.ts";
 const mockFindPrincipal = vi.mocked(findPrincipalByProviderIdentity);
 const mockCreateSession = vi.mocked(createSession);
 const mockWriteAuditLog = vi.mocked(writeAuditLog);
-
-function makeRegistry(overrides?: { verify?: ReturnType<typeof vi.fn> }): OidcVerifierRegistry {
-  return {
-    verify: overrides?.verify ?? vi.fn(),
-    register: vi.fn(),
-    registeredProviders: [],
-  } as unknown as OidcVerifierRegistry;
-}
-
-function makePool(queryResult?: { rows: unknown[] }) {
-  return {
-    query: vi.fn().mockResolvedValue(queryResult ?? { rows: [] }),
-  } as unknown as import("pg").Pool;
-}
-
-function makeRes() {
-  const json = vi.fn();
-  const cookie = vi.fn();
-  const res = {} as Partial<Response>;
-  const status = vi.fn().mockReturnValue(res);
-  res.json = json;
-  res.status = status as unknown as Response["status"];
-  res.cookie = cookie as unknown as Response["cookie"];
-  return { res: res as Response, json, status, cookie };
-}
-
-function makeLog() {
-  return {
-    fatal: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn(),
-    trace: vi.fn(),
-  };
-}
-
-function makeReq(body: Record<string, unknown>): Request {
-  return {
-    body,
-    log: makeLog(),
-    requestContext: { userAgent: "TestAgent/1.0" },
-  } as unknown as Request;
-}
 
 const noop = vi.fn();
 
@@ -93,11 +48,7 @@ describe("loginHandler", () => {
   });
 
   it("returns 400 for an unknown provider and writes audit log", async () => {
-    const registry = makeRegistry({
-      verify: vi.fn().mockImplementation(() => {
-        throw new UnknownProviderError("github");
-      }),
-    });
+    const registry = makeRegistry(vi.fn());
     const handler = loginHandler(registry, makePool());
     const { res, status } = makeRes();
     await handler(makeReq({ provider: "github", credential: "tok" }), res, noop);
@@ -113,9 +64,9 @@ describe("loginHandler", () => {
   });
 
   it("returns 401 for a verification failure and writes audit log", async () => {
-    const registry = makeRegistry({
-      verify: vi.fn().mockRejectedValue(new TokenVerificationError("google", "expired")),
-    });
+    const registry = makeRegistry(
+      vi.fn().mockRejectedValue(new TokenVerificationError("google", "expired")),
+    );
     const handler = loginHandler(registry, makePool());
     const { res, status } = makeRes();
     await handler(makeReq({ provider: "google", credential: "bad" }), res, noop);
@@ -131,14 +82,14 @@ describe("loginHandler", () => {
   });
 
   it("returns 401 when user has no identity record and writes audit log", async () => {
-    const registry = makeRegistry({
-      verify: vi.fn().mockResolvedValue({
+    const registry = makeRegistry(
+      vi.fn().mockResolvedValue({
         provider: "google",
         providerSubjectId: "sub-123",
         email: "user@example.com",
         emailVerified: true,
       }),
-    });
+    );
     mockFindPrincipal.mockResolvedValue(null);
     const handler = loginHandler(registry, makePool());
     const { res, status } = makeRes();
@@ -156,14 +107,14 @@ describe("loginHandler", () => {
 
   it("returns 401 when user has no membership and writes audit log", async () => {
     const principalId = "principal-uuid";
-    const registry = makeRegistry({
-      verify: vi.fn().mockResolvedValue({
+    const registry = makeRegistry(
+      vi.fn().mockResolvedValue({
         provider: "google",
         providerSubjectId: "sub-123",
         email: "user@example.com",
         emailVerified: true,
       }),
-    });
+    );
     mockFindPrincipal.mockResolvedValue({ principalId });
     const handler = loginHandler(registry, makePool({ rows: [] }));
     const { res, status } = makeRes();
@@ -182,14 +133,14 @@ describe("loginHandler", () => {
   it("sets cookie, returns 200 on success, and writes audit log", async () => {
     const principalId = "principal-uuid";
     const tenantId = "tenant-uuid";
-    const registry = makeRegistry({
-      verify: vi.fn().mockResolvedValue({
+    const registry = makeRegistry(
+      vi.fn().mockResolvedValue({
         provider: "google",
         providerSubjectId: "sub-123",
         email: "user@example.com",
         emailVerified: true,
       }),
-    });
+    );
     mockFindPrincipal.mockResolvedValue({ principalId });
     mockCreateSession.mockResolvedValue("session-token");
     const pool = makePool({ rows: [{ tenant_id: tenantId, role: "admin" }] });

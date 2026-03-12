@@ -14,11 +14,6 @@ vi.mock("../../src/auth/session-service.ts", () => ({
   createSession: vi.fn(),
 }));
 
-vi.mock("../../src/audit/audit-logger.ts", () => ({
-  SYSTEM_PRINCIPAL_ID: "00000000-0000-0000-0000-000000000000",
-  writeAuditLog: vi.fn(),
-}));
-
 function createTestApp(verifyFn: OidcProviderVerifier["verify"]) {
   const registry = new OidcVerifierRegistry();
   registry.register({ providerId: "google", verify: verifyFn });

@@ -2,25 +2,36 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "./audit-logger.ts";
 import type { Pool } from "pg";
 
-vi.mock("../logger.ts", () => {
-  const auditChild = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
-  return {
-    logger: {
-      error: vi.fn(),
-      warn: vi.fn(),
-      info: vi.fn(),
-      debug: vi.fn(),
-      child: vi.fn(() => auditChild),
-      _auditChild: auditChild,
+vi.mock("../logger.ts", async () => {
+  const { Writable } = await import("node:stream");
+  const pino = (await import("pino")).default;
+
+  const chunks: Buffer[] = [];
+  const stream = new Writable({
+    write(chunk, _encoding, cb) {
+      chunks.push(chunk);
+      cb();
     },
+  });
+
+  return {
+    logger: Object.assign(pino({ level: "debug" }, stream), {
+      _chunks: chunks,
+    }),
   };
 });
 
 import { logger } from "../logger.ts";
 
-const mockAuditLogger = (
-  logger as unknown as { _auditChild: Record<string, ReturnType<typeof vi.fn>> }
-)._auditChild;
+function drainCapturedLines(): Record<string, unknown>[] {
+  const chunks = (logger as unknown as { _chunks: Buffer[] })._chunks;
+  const raw = Buffer.concat(chunks).toString();
+  chunks.length = 0;
+  return raw
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
 
 function makePool(reject = false) {
   const query = reject
@@ -80,9 +91,9 @@ describe("writeAuditLog", () => {
       writeAuditLog(pool, { principalId: SYSTEM_PRINCIPAL_ID, action: "auth.logout" }),
     ).not.toThrow();
     await new Promise((r) => setTimeout(r, 0));
-    expect(mockAuditLogger.error).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }),
-      "Audit log write failed",
-    );
+    const lines = drainCapturedLines();
+    const errorLine = lines.find((l) => l.level === 50);
+    expect(errorLine).toBeDefined();
+    expect(errorLine!.msg).toBe("Audit log write failed");
   });
 });

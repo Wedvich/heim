@@ -13,11 +13,6 @@ vi.mock("../../src/db.ts", () => ({
   },
 }));
 
-vi.mock("../../src/audit/audit-logger.ts", () => ({
-  SYSTEM_PRINCIPAL_ID: "00000000-0000-0000-0000-000000000000",
-  writeAuditLog: vi.fn(),
-}));
-
 function createTestApp() {
   const registry = new OidcVerifierRegistry();
   const app = express();
