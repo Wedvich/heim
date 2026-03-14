@@ -122,9 +122,9 @@ CREATE TABLE forgettable_payloads (
   FOREIGN KEY (tenant_id, event_id) REFERENCES events(tenant_id, id)
 ) PARTITION BY LIST (tenant_id);
 
--- crypto_keys ----------------------------------------------------------------
+-- forgettable_payload_keys ---------------------------------------------------
 
-CREATE TABLE crypto_keys (
+CREATE TABLE forgettable_payload_keys (
   id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   principal_id  uuid           NOT NULL UNIQUE REFERENCES principals(id),
   encrypted_key bytea          NOT NULL,

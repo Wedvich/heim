@@ -1,6 +1,7 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import type { RequestHandler } from "express";
 import type { Pool } from "pg";
+import type { UserCreatedEvent } from "@heim/domain";
 import type { OidcVerifierRegistry } from "./oidc/registry.ts";
 import { TokenVerificationError, UnknownProviderError } from "./oidc/types.ts";
 import {
@@ -13,6 +14,13 @@ import { hashEmail } from "./email-hash.ts";
 import { generateSlug, generateSlugWithSuffix, validateSlug } from "./slug.ts";
 import { COOKIE_NAME, cookieOptions } from "../middleware/session.ts";
 import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "../audit/audit-logger.ts";
+import type { KeyManagementService } from "../crypto/kms.ts";
+import {
+  createForgettablePayloadKey,
+  getForgettablePayloadKey,
+} from "../crypto/forgettable-payload-key-repository.ts";
+import { appendEvents } from "../event-store/append-events.ts";
+import { storeForgettablePayload } from "../event-store/store-forgettable-payload.ts";
 
 const SESSION_TTL_DAYS = 30;
 
@@ -20,6 +28,7 @@ export function registerHandler(
   registry: OidcVerifierRegistry,
   db: Pool,
   emailHmacKey: string,
+  kms: KeyManagementService,
 ): RequestHandler {
   return async (req, res) => {
     const detail: { provider?: string; user_agent: string } = {
@@ -205,7 +214,67 @@ export function registerHandler(
         // 7. Mark invite used
         await markInviteUsed(client, invite.id, principalId);
 
-        // 8. Create session (inline to stay within transaction)
+        // 8. Co-write UserCreated event with forgettable payload
+        let plaintextDek: Buffer;
+        if (merged) {
+          const existingKey = await getForgettablePayloadKey(client, principalId);
+          if (existingKey) {
+            plaintextDek = await kms.decryptDek(existingKey.encryptedKey, existingKey.mekVersion);
+          } else {
+            const generated = await kms.generateDek();
+            plaintextDek = generated.plaintextDek;
+            await createForgettablePayloadKey(client, {
+              principalId,
+              encryptedDek: generated.encryptedDek,
+              mekVersion: generated.mekVersion,
+            });
+          }
+        } else {
+          const generated = await kms.generateDek();
+          plaintextDek = generated.plaintextDek;
+          await createForgettablePayloadKey(client, {
+            principalId,
+            encryptedDek: generated.encryptedDek,
+            mekVersion: generated.mekVersion,
+          });
+        }
+
+        const correlationId = randomUUID();
+        const eventId = randomUUID();
+        const userCreatedEvent: UserCreatedEvent = {
+          id: eventId,
+          tenantId,
+          streamId: principalId,
+          streamType: "User",
+          streamPosition: 1,
+          eventType: "UserCreated",
+          correlationId,
+          causationId: `command:${correlationId}`,
+          actingPrincipalId: principalId,
+          effectivePrincipalId: null,
+          payload: {
+            provider: identity.provider,
+            providerSubjectId: identity.providerSubjectId,
+            merged,
+          },
+          metadata: {},
+          actualTime: new Date(),
+        };
+
+        await appendEvents(client, [userCreatedEvent]);
+        await storeForgettablePayload(client, {
+          eventId,
+          tenantId,
+          principalId,
+          plaintext: {
+            email: identity.email,
+            name: identity.name,
+            avatarUrl: identity.avatarUrl,
+          },
+          dek: plaintextDek,
+        });
+
+        // 10. Create session (inline to stay within transaction)
         const sessionToken = randomBytes(32).toString("base64url");
         const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
         await client.query(
@@ -215,7 +284,7 @@ export function registerHandler(
 
         await client.query("COMMIT");
 
-        // 9. Audit logs (fire-and-forget, after commit)
+        // 11. Audit logs (fire-and-forget, after commit)
         writeAuditLog(db, {
           principalId,
           tenantId,
@@ -245,7 +314,7 @@ export function registerHandler(
           });
         }
 
-        // 10. Set cookie and respond
+        // 12. Set cookie and respond
         res.cookie(COOKIE_NAME, sessionToken, cookieOptions());
         res.json({ principal: { id: principalId }, tenant: { id: tenantId } });
       } catch (err) {

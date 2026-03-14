@@ -102,7 +102,7 @@ Server-side sessions for authenticated users. Each session is identified by an o
 
 **Indexes:** on `principal_id` for "list/invalidate all sessions for a principal"; on `expires_at` for cleanup of expired sessions.
 
-No RLS — sessions are cross-tenant like `principals`, `identities`, and `crypto_keys`. Access control is application-layer. No soft delete — logout deletes the row, history lives in `audit_log`.
+No RLS — sessions are cross-tenant like `principals`, `identities`, and `forgettable_payload_keys`. Access control is application-layer. No soft delete — logout deletes the row, history lives in `audit_log`.
 
 ### `invites`
 
@@ -179,7 +179,7 @@ When a consumer reads an event, it fetches the corresponding payload and decrypt
 
 No `updated_at` — payloads are immutable once written (append-only, like events).
 
-### `crypto_keys`
+### `forgettable_payload_keys`
 
 Per-principal encryption keys for forgettable payloads.
 
@@ -203,7 +203,7 @@ The MEK and `EMAIL_HMAC_KEY` MUST be separate secrets with independent access co
 
 **Forgetting data:** two complementary mechanisms, both application-driven:
 
-- **Forget a principal:** delete their `crypto_keys` row. All their `forgettable_payloads` become permanently unreadable (crypto shredding). After deleting the `crypto_keys` row, a background job MUST physically delete the principal's `forgettable_payloads` rows within a defined SLA (e.g., 24 hours). The encrypted payloads are already unreadable, but the remaining metadata (`principal_id`, `tenant_id`, `event_id`, `created_at`) constitutes a data trail that should not be retained.
+- **Forget a principal:** delete their `forgettable_payload_keys` row. All their `forgettable_payloads` become permanently unreadable (crypto shredding). After deleting the `forgettable_payload_keys` row, a background job MUST physically delete the principal's `forgettable_payloads` rows within a defined SLA (e.g., 24 hours). The encrypted payloads are already unreadable, but the remaining metadata (`principal_id`, `tenant_id`, `event_id`, `created_at`) constitutes a data trail that should not be retained.
 - **Forget a tenant:** `DELETE FROM forgettable_payloads WHERE tenant_id = X`. This is why `tenant_id` is denormalized onto forgettable payloads — it enables tenant-level deletion without joining through events.
 
 In both cases, the events themselves remain intact — only the sensitive portions are lost.
@@ -254,7 +254,7 @@ USING (tenant_id = current_setting('app.current_tenant_id')::uuid)
 
 System-level operations (migrations, projection rebuilds, global replay) use a dedicated database role with `BYPASSRLS` privilege.
 
-The `principals`, `identities`, `crypto_keys`, and `sessions` tables are cross-tenant by design and do NOT have tenant-scoped RLS. Access control for these is application-layer only.
+The `principals`, `identities`, `forgettable_payload_keys`, and `sessions` tables are cross-tenant by design and do NOT have tenant-scoped RLS. Access control for these is application-layer only.
 
 LIST partition pruning makes the RLS predicate essentially free — Postgres prunes to the correct partition first, then the RLS check is trivially true for every remaining row. RLS also acts as insurance against a future partitioning strategy change (e.g., migration to hash partitioning).
 
@@ -278,7 +278,7 @@ No system tenant is needed. Principal creation is CRUD + audit_log only (not eve
 erDiagram
     principals ||--o{ memberships : "has"
     principals ||--o{ identities : "has"
-    principals ||--o{ crypto_keys : "has one"
+    principals ||--o{ forgettable_payload_keys : "has one"
     principals ||--o{ sessions : "has"
     principals ||--o{ forgettable_payloads : "owns"
     principals ||--o{ events : "acted in"
@@ -368,7 +368,7 @@ erDiagram
         timestamptz created_at
     }
 
-    crypto_keys {
+    forgettable_payload_keys {
         uuid id PK
         uuid principal_id FK
         bytea encrypted_key

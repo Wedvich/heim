@@ -6,12 +6,16 @@ import { sessionMiddleware } from "../../src/middleware/session.ts";
 import { createAuthRouter } from "../../src/routes/auth.ts";
 import { createTenantsRouter } from "../../src/routes/tenants.ts";
 import { OidcVerifierRegistry } from "../../src/auth/oidc/registry.ts";
+import { LocalKeyManagementService } from "../../src/crypto/kms.ts";
+import { randomBytes } from "node:crypto";
 
 vi.mock("../../src/db.ts", () => ({
   pool: {
     query: vi.fn().mockRejectedValue(new Error("unexpected DB call")),
   },
 }));
+
+const kms = new LocalKeyManagementService(randomBytes(32).toString("base64"));
 
 function createTestApp() {
   const registry = new OidcVerifierRegistry();
@@ -20,7 +24,7 @@ function createTestApp() {
   app.use(express.urlencoded({ extended: false }));
   app.use(requestContextMiddleware);
   app.use(sessionMiddleware);
-  app.use("/api/auth", createAuthRouter(registry, "test-hmac-key"));
+  app.use("/api/auth", createAuthRouter(registry, "test-hmac-key", kms));
   app.use("/api/tenants", createTenantsRouter());
   return app;
 }

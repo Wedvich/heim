@@ -11,6 +11,7 @@ import { createAuthRouter } from "./routes/auth.ts";
 import { createTenantsRouter } from "./routes/tenants.ts";
 import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
 import { GoogleOidcVerifier } from "./auth/oidc/google-verifier.ts";
+import { LocalKeyManagementService } from "./crypto/kms.ts";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 if (!googleClientId) {
@@ -20,6 +21,11 @@ if (!googleClientId) {
 const emailHmacKey = process.env.EMAIL_HMAC_KEY;
 if (!emailHmacKey) {
   throw new Error("EMAIL_HMAC_KEY is required");
+}
+
+const masterEncryptionKey = process.env.MASTER_ENCRYPTION_KEY;
+if (!masterEncryptionKey) {
+  throw new Error("MASTER_ENCRYPTION_KEY is required");
 }
 
 const corsOrigin = process.env.CORS_ORIGIN;
@@ -37,6 +43,8 @@ const port = 5244;
 const oidcRegistry = new OidcVerifierRegistry();
 oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
+const kms = new LocalKeyManagementService(masterEncryptionKey);
+
 app.use(helmet({ hsts: false }));
 app.use(cors({ origin, credentials: true }));
 app.use(express.json());
@@ -49,7 +57,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey));
+app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey, kms));
 app.use("/api/tenants", createTenantsRouter());
 
 app.use(

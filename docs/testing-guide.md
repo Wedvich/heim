@@ -16,12 +16,17 @@ The API runs at `http://localhost:5244`.
 
 Set these before starting the API (or in a `.env` file if you use one):
 
-| Variable           | Required for     | Example                                   |
-| ------------------ | ---------------- | ----------------------------------------- |
-| `GOOGLE_CLIENT_ID` | Login + Register | `123456.apps.googleusercontent.com`       |
-| `EMAIL_HMAC_KEY`   | Register only    | Any secret string, e.g. `my-dev-hmac-key` |
+| Variable                | Required for     | Example                                   |
+| ----------------------- | ---------------- | ----------------------------------------- |
+| `GOOGLE_CLIENT_ID`      | Login + Register | `123456.apps.googleusercontent.com`       |
+| `EMAIL_HMAC_KEY`        | Register only    | Any secret string, e.g. `my-dev-hmac-key` |
+| `MASTER_ENCRYPTION_KEY` | Register only    | Base64-encoded 32 bytes (see below)       |
 
-If `EMAIL_HMAC_KEY` is not set, the `/auth/register` endpoint is not mounted and the API logs a warning.
+Generate a dev `MASTER_ENCRYPTION_KEY`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
 
 ---
 
@@ -73,6 +78,9 @@ Optionally pass `"tenantSlug": "my-household"` — if omitted, one is auto-gener
 - DB rows created: `principals`, `identities`, `tenants`, `memberships`, `sessions`
 - Invite row updated: `used_by` and `used_at` populated
 - Event/forgettable_payloads partitions created for the new tenant
+- `events` row with `event_type = 'UserCreated'`, `stream_type = 'User'`
+- `forgettable_payloads` row with encrypted PII (email, name, avatarUrl)
+- `forgettable_payload_keys` row with the principal's encrypted DEK
 
 **Verify**:
 
@@ -90,6 +98,15 @@ SELECT * FROM memberships ORDER BY created_at DESC LIMIT 1;
 
 -- Check the invite was consumed
 SELECT id, token, used_by, used_at FROM invites WHERE token = 'test-create-tenant';
+
+-- Check the UserCreated event
+SELECT id, event_type, stream_type, stream_id, payload FROM events ORDER BY record_time DESC LIMIT 1;
+
+-- Check the forgettable payload (should be non-cleartext bytea)
+SELECT event_id, principal_id, octet_length(encrypted_payload) FROM forgettable_payloads LIMIT 1;
+
+-- Check the crypto key
+SELECT principal_id, mek_version FROM forgettable_payload_keys LIMIT 1;
 
 -- Check audit log entries
 SELECT action, resource_type, resource_id, detail FROM audit_log ORDER BY created_at DESC LIMIT 5;

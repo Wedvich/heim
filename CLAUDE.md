@@ -48,6 +48,13 @@ Filter to a specific package with `-F`:
     yarn turbo dev -F @heim/web                    # Web only (against remote API)
     docker compose -f packages/infra/compose.yml down -v   # Wipe database
 
+## Testing
+
+- **Mock only the database (SQL) and external APIs.** Use real implementations for everything else
+  — crypto, domain logic, helpers, etc. This ensures tests exercise the actual code paths and catch
+  real integration issues. If a component is in-process and has no I/O side effects, wire the real
+  thing.
+
 ## Project Documentation
 
 - [docs/architecture.md](docs/architecture.md)

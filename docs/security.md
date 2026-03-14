@@ -130,7 +130,7 @@ tests/supply-chain/
 
 1. **Forgettable payload encryption is not implemented.** `encrypted_payload` column exists but no code
    encrypts/decrypts. PII stored now would be cleartext bytea.
-2. **MEK management not implemented.** `crypto_keys` table exists but no KMS abstraction.
+2. **MEK management not implemented.** `forgettable_payload_keys` table exists but no KMS abstraction.
 3. **Email HMAC is unsalted.** Documented and accepted tradeoff, but compromised key enables rainbow
    table attack.
 4. **No TLS enforcement visible.** Assumed via nginx, but no HSTS header.
