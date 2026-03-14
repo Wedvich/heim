@@ -7,6 +7,28 @@ on:
     branches: [main]
 
 jobs:
+  commitlint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Validate PR title
+        run: echo "${{ github.event.pull_request.title }}" | yarn commitlint
+
   ci:
     runs-on: ubuntu-latest
     env:
