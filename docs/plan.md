@@ -4,13 +4,20 @@
 
 **Goal:** A working custom event store with bitemporal support.
 
-- [ ] Define base event types with bitemporal metadata (record time + actual time)
+- [x] Define base event types with bitemporal metadata (record time + actual time)
+- [x] Implement Postgres event store tables (events, forgettable_payloads, forgettable_payload_keys)
+- [x] Implement event append (`appendEvents`) and forgettable payload storage
+- [x] Implement KMS abstraction + payload encryption (AES-256-GCM, MEK → DEK)
+- [x] Co-write first event: `UserCreated` with encrypted forgettable payload (PII)
+- [ ] Co-write remaining register-flow events (no PII encryption):
+  - [ ] `IdentityLinkedToUser` — every registration (links provider identity to principal)
+  - [ ] `TenantCreated` — create-tenant invite path
+  - [ ] `MemberAddedToTenant` — both join and create paths
 - [ ] Define base aggregate class with apply/fold pattern
 - [ ] Define command types and command handler interface
 - [ ] Define repository interface
-- [ ] Implement Postgres event store (append, load stream, load at point in time)
-- [ ] Implement Postgres migrations for event store tables
-- [ ] Write comprehensive tests: append, reload, ordering, bitemporal queries
+- [ ] Implement stream loading (load stream, load at point in time)
+- [ ] Write comprehensive tests: reload, ordering, bitemporal queries
 - [ ] Implement basic projection infrastructure (subscribe to stream, fold into read model)
 - [ ] Add `compose.prod.yml` with nginx as production entry point (serve static bundle, proxy `/api` to Express)
 
@@ -20,15 +27,19 @@
 
 **Goal:** Users can log in with Google/Apple, create/join tenants, and get JWT tokens.
 
+- [x] Implement OIDC integration (Google) in `@heim/api`
+- [x] Implement invite-only registration with email merge
+- [x] Implement session-based auth (cookie, middleware)
+- [x] Implement login flow
+- [x] Build basic login UI in `@heim/web` (Google Sign-In, routing, auth context)
 - [ ] Implement User, Identity, Tenant, Membership aggregates in `@heim/domain`
 - [ ] Implement commands: register, link identity, create tenant, add member, etc.
 - [ ] Implement ABAC policy engine with role-based initial policies
-- [ ] Implement OIDC integration (Google + Apple) in `@heim/api`
+- [ ] Implement Apple OIDC provider
+- [ ] Implement Microsoft OIDC provider
 - [ ] Implement JWT token issuance and refresh via `jose`
 - [ ] Implement dev bypass auth
-- [ ] Implement auth middleware (token validation, tenant context extraction)
 - [ ] Implement impersonation middleware
-- [ ] Build basic login UI in `@heim/web` (provider selection, tenant selection)
 - [ ] Build projections: user profile, tenant member list
 - [ ] E2E test: full login flow with dev bypass
 

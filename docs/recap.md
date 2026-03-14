@@ -1,6 +1,78 @@
 # Session Recap
 
-## Latest: Routing, Google Sign-In, and Auth Hardening
+## Latest: Event Store — First Vertical (UserCreated)
+
+Wired the event store write path end-to-end. When a user registers, a `UserCreated` event is now co-written in the same transaction alongside the existing CRUD writes, with PII encrypted in a forgettable payload.
+
+### What changed
+
+**Schema:** Renamed `crypto_keys` → `forgettable_payload_keys` in `init.sql`, `database.md`, `security.md`.
+
+**Domain types** (`packages/domain/src/`):
+
+| File                      | Purpose                                                 |
+| ------------------------- | ------------------------------------------------------- |
+| `events.ts`               | `DomainEvent`, `UserCreatedEvent`, `UserCreatedPayload` |
+| `forgettable-payloads.ts` | `UserCreatedPii` (email, name, avatarUrl)               |
+| `index.ts`                | Barrel export                                           |
+
+**Crypto layer** (`packages/api/src/crypto/`):
+
+| File                                    | Purpose                                                        |
+| --------------------------------------- | -------------------------------------------------------------- |
+| `kms.ts`                                | `KeyManagementService` interface + `LocalKeyManagementService` |
+| `payload-encryption.ts`                 | `encryptPayload` / `decryptPayload` (AES-256-GCM)              |
+| `forgettable-payload-key-repository.ts` | Per-principal DEK storage (idempotent upsert + lookup)         |
+
+**Event store** (`packages/api/src/event-store/`):
+
+| File                           | Purpose                                               |
+| ------------------------------ | ----------------------------------------------------- |
+| `append-events.ts`             | `appendEvents(client, events)` — parameterized INSERT |
+| `store-forgettable-payload.ts` | Encrypt + store PII as forgettable payload            |
+
+**Modified:**
+
+| File                    | Change                                                                  |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `register-handler.ts`   | Co-writes UserCreated event + forgettable payload in transaction        |
+| `routes/auth.ts`        | Passes `kms` through to register handler                                |
+| `index.ts`              | Reads `MASTER_ENCRYPTION_KEY`, instantiates `LocalKeyManagementService` |
+| `CLAUDE.md`             | Added testing section: mock only DB/SQL and external APIs               |
+| `docs/testing-guide.md` | Added `MASTER_ENCRYPTION_KEY` env var, event store verification queries |
+
+### Register handler flow (updated steps 8–9)
+
+After CRUD writes and invite mark-used, the handler now:
+
+8. **Crypto key:** Generate DEK (new user) or decrypt existing DEK (email merge path)
+9. **Co-write event:** Build `UserCreatedEvent` (no PII in payload) → `appendEvents` → `storeForgettablePayload` (encrypted email/name/avatarUrl)
+
+### Environment variables
+
+| Variable                | Required for                                                   |
+| ----------------------- | -------------------------------------------------------------- |
+| `GOOGLE_CLIENT_ID`      | Login + Register                                               |
+| `EMAIL_HMAC_KEY`        | Register only (any string; use 32+ random bytes in production) |
+| `MASTER_ENCRYPTION_KEY` | Register only (base64-encoded 32 bytes)                        |
+
+All three are required — the app throws on startup if any is missing.
+
+### Next up
+
+Co-write the remaining register-flow events (no PII encryption needed):
+
+- `IdentityLinkedToUser` — emitted for every registration (links provider identity to principal)
+- `TenantCreated` — emitted when a new tenant is created (create-tenant invite path)
+- `MemberAddedToTenant` — emitted when a membership is created (both join and create paths)
+
+### Test coverage
+
+83 tests across 16 test files, all passing. Typecheck and lint clean.
+
+---
+
+## Previous: Routing, Google Sign-In, and Auth Hardening
 
 ### Web: Client-side routing and Google Sign-In
 
