@@ -9,6 +9,7 @@ import { requestContextMiddleware } from "./middleware/request-context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
 import { createAuthRouter } from "./routes/auth.ts";
 import { createTenantsRouter } from "./routes/tenants.ts";
+import { createUserRouter } from "./routes/user.ts";
 import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
 import { GoogleOidcVerifier } from "./auth/oidc/google-verifier.ts";
 import { LocalKeyManagementService } from "./crypto/kms.ts";
@@ -59,6 +60,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey, kms));
 app.use("/api/tenants", createTenantsRouter());
+app.use("/api/user", createUserRouter(pool, kms));
 
 app.use(
   (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
