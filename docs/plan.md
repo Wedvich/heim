@@ -13,7 +13,7 @@
   - [ ] `IdentityLinkedToUser` — every registration (links provider identity to principal)
   - [ ] `TenantCreated` — create-tenant invite path
   - [ ] `MemberAddedToTenant` — both join and create paths
-- [ ] Define base aggregate class with apply/fold pattern
+- [x] Define base aggregate class with apply/fold pattern
 - [ ] Define command types and command handler interface
 - [ ] Define repository interface
 - [ ] Implement stream loading (load stream, load at point in time)
@@ -32,7 +32,9 @@
 - [x] Implement session-based auth (cookie, middleware)
 - [x] Implement login flow
 - [x] Build basic login UI in `@heim/web` (Google Sign-In, routing, auth context)
-- [ ] Implement User, Identity, Tenant, Membership aggregates in `@heim/domain`
+- [x] Implement User aggregate in `@heim/domain`
+- [x] Serve hydrated user event stream (`GET /api/user/me/events`) and fold on client
+- [ ] Implement Identity, Tenant, Membership aggregates in `@heim/domain`
 - [ ] Implement commands: register, link identity, create tenant, add member, etc.
 - [ ] Implement ABAC policy engine with role-based initial policies
 - [ ] Implement Apple OIDC provider

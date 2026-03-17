@@ -1,6 +1,67 @@
 # Session Recap
 
-## Latest: Event Store — First Vertical (UserCreated)
+## Latest: User Aggregate, Event Hydration, and Client-Side Fold
+
+Three commits shipped together to close the loop from event append through to a hydrated UI state.
+
+### What changed
+
+**Domain types** (`packages/domain/src/`):
+
+| File                | Purpose                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `aggregate.ts`      | `buildAggregate` — generic fold infrastructure; wraps an apply function and initial state |
+| `user/aggregate.ts` | `buildUserAggregate` — creates a `UserAggregate` from a stream of events                  |
+| `user/apply.ts`     | `applyUserEvent` — pure fold function: `(UserState, UserEvent) → UserState`               |
+| `user/state.ts`     | `UserState` type — current in-memory representation of a user (display name, avatar URL)  |
+| `user/index.ts`     | Barrel export for user aggregate                                                          |
+
+**API** (`packages/api/src/`):
+
+| File                                | Purpose                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `user/load-hydrated-user-stream.ts` | `loadHydratedUserStream` — loads events from DB, decrypts forgettable payloads |
+| `routes/user.ts`                    | `GET /api/user/me/events` — streams hydrated events as JSON to the client      |
+
+**Frontend** (`packages/web/src/`):
+
+| File                    | Purpose                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| `user/user-context.tsx` | `UserProvider` + `useUser()` — fetches event stream and folds it into `UserState` on mount |
+| `pages/HomePage.tsx`    | Displays user's display name and avatar from folded `UserState`                            |
+
+#### Modified files
+
+| File                           | Change                                                 |
+| ------------------------------ | ------------------------------------------------------ |
+| `packages/domain/src/index.ts` | Re-exports aggregate infrastructure and user aggregate |
+| `packages/web/src/main.tsx`    | Wraps app in `<UserProvider>`                          |
+
+### Incremental sync design
+
+`GET /api/user/me/events` accepts an optional `afterVersion` query parameter. The client tracks the last seen version in a `versionRef` and uses it on subsequent fetches to request only new events — enabling efficient incremental sync without re-loading the full stream.
+
+### Serialization note
+
+Event `actualTime` fields are serialized as ISO strings over the wire. The client parses them back to `Date` objects using a `reviver` function passed to `JSON.parse`, preserving the domain type contract.
+
+### Test coverage
+
+92 tests across 18 test files, all passing. Typecheck and lint clean.
+
+### Next up
+
+Co-write the remaining register-flow events (no PII encryption needed):
+
+- `IdentityLinkedToUser` — emitted for every registration (links provider identity to principal)
+- `TenantCreated` — emitted when a new tenant is created (create-tenant invite path)
+- `MemberAddedToTenant` — emitted when a membership is created (both join and create paths)
+
+After those, the next milestone is command infrastructure.
+
+---
+
+## Previous: Event Store — First Vertical (UserCreated)
 
 Wired the event store write path end-to-end. When a user registers, a `UserCreated` event is now co-written in the same transaction alongside the existing CRUD writes, with PII encrypted in a forgettable payload.
 
