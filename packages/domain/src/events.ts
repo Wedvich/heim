@@ -25,3 +25,5 @@ export interface UserCreatedEvent extends DomainEvent {
   readonly streamType: "User";
   readonly payload: UserCreatedPayload;
 }
+
+export type UserEvent = UserCreatedEvent;
