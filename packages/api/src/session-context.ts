@@ -10,7 +10,7 @@ export interface SessionContext {
 declare global {
   namespace Express {
     interface Request {
-      session?: SessionContext | undefined;
+      session?: SessionContext;
       requestContext: RequestContext;
     }
   }
