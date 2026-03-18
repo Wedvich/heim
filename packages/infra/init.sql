@@ -40,7 +40,7 @@ CREATE TABLE tenants (
 -- memberships ----------------------------------------------------------------
 
 CREATE TABLE memberships (
-  id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id            uuid        PRIMARY KEY DEFAULT uuidv7(),
   principal_id  uuid           NOT NULL REFERENCES principals(id),
   tenant_id     uuid           NOT NULL REFERENCES tenants(id),
   role          text           NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE memberships (
 -- identities -----------------------------------------------------------------
 
 CREATE TABLE identities (
-  id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id                  uuid        PRIMARY KEY DEFAULT uuidv7(),
   principal_id        uuid           NOT NULL REFERENCES principals(id),
   provider            text           NOT NULL,
   provider_subject_id text           NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE sessions (
 -- invites -------------------------------------------------------------------
 
 CREATE TABLE invites (
-  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id          uuid        PRIMARY KEY DEFAULT uuidv7(),
   token       text           NOT NULL UNIQUE,
   tenant_id   uuid                    REFERENCES tenants(id),
   role        text           NOT NULL DEFAULT 'member',
@@ -111,7 +111,7 @@ CREATE TABLE events (
 -- forgettable_payloads (LIST partitioned by tenant_id) -----------------------
 
 CREATE TABLE forgettable_payloads (
-  id                uuid        NOT NULL DEFAULT gen_random_uuid(),
+  id                uuid        NOT NULL DEFAULT uuidv7(),
   event_id          uuid           NOT NULL,
   tenant_id         uuid           NOT NULL,
   principal_id      uuid           NOT NULL REFERENCES principals(id),
@@ -125,7 +125,7 @@ CREATE TABLE forgettable_payloads (
 -- forgettable_payload_keys ---------------------------------------------------
 
 CREATE TABLE forgettable_payload_keys (
-  id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id            uuid        PRIMARY KEY DEFAULT uuidv7(),
   principal_id  uuid           NOT NULL UNIQUE REFERENCES principals(id),
   encrypted_key bytea          NOT NULL,
   mek_version   smallint       NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE forgettable_payload_keys (
 -- audit_log ------------------------------------------------------------------
 
 CREATE TABLE audit_log (
-  id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id            uuid        PRIMARY KEY DEFAULT uuidv7(),
   tenant_id     uuid,
   principal_id  uuid           NOT NULL,
   action        text           NOT NULL,
