@@ -53,7 +53,7 @@ Links principals to tenants with a role.
 
 | Column         | Type                   | Notes               |
 | -------------- | ---------------------- | ------------------- |
-| `id`           | UUID PK                | `gen_random_uuid()` |
+| `id`           | UUID PK                | `uuidv7()`          |
 | `principal_id` | UUID FK → `principals` | Required            |
 | `tenant_id`    | UUID FK → `tenants`    | Required            |
 | `role`         | text                   | Required            |
@@ -72,7 +72,7 @@ Connects principals to external identity providers (Google, Apple).
 
 | Column                | Type                   | Notes                                                                                   |
 | --------------------- | ---------------------- | --------------------------------------------------------------------------------------- |
-| `id`                  | UUID PK                | `gen_random_uuid()`                                                                     |
+| `id`                  | UUID PK                | `uuidv7()`                                                                              |
 | `principal_id`        | UUID FK → `principals` | Required                                                                                |
 | `provider`            | text                   | Required (e.g. `'google'`, `'apple'`). Not an enum — providers are an open set.         |
 | `provider_subject_id` | text                   | Required. The provider's `sub` claim, stored in cleartext (opaque identifier, not PII). |
@@ -110,7 +110,7 @@ Single-use invite tokens for registration. An invite grants the holder permissio
 
 | Column       | Type                   | Notes                                                                       |
 | ------------ | ---------------------- | --------------------------------------------------------------------------- |
-| `id`         | UUID PK                | `gen_random_uuid()`                                                         |
+| `id`         | UUID PK                | `uuidv7()`                                                                  |
 | `token`      | text                   | Required, unique. Opaque crypto-random token sent in the invite link.       |
 | `tenant_id`  | UUID FK → `tenants`    | Nullable. The tenant the invite is for. Null for system-level invites.      |
 | `role`       | text                   | Required, default `'member'`. The role the invitee will receive on joining. |
@@ -164,7 +164,7 @@ When a consumer reads an event, it fetches the corresponding payload and decrypt
 
 | Column              | Type                   | Notes                                                                                 |
 | ------------------- | ---------------------- | ------------------------------------------------------------------------------------- |
-| `id`                | UUID PK                | `gen_random_uuid()`                                                                   |
+| `id`                | UUID PK                | `uuidv7()`                                                                            |
 | `event_id`          | UUID                   | Required.                                                                             |
 | `tenant_id`         | UUID                   | Required.                                                                             |
 | `principal_id`      | UUID FK → `principals` | Required. Determines which encryption key was used. This is the "forget me" axis.     |
@@ -185,7 +185,7 @@ Per-principal encryption keys for forgettable payloads.
 
 | Column          | Type                   | Notes                                                                                                                                                                           |
 | --------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`            | UUID PK                | `gen_random_uuid()`                                                                                                                                                             |
+| `id`            | UUID PK                | `uuidv7()`                                                                                                                                                                      |
 | `principal_id`  | UUID FK → `principals` | Required, unique — one key per principal.                                                                                                                                       |
 | `encrypted_key` | bytea                  | Required. The data encryption key (DEK), encrypted with the current master encryption key (MEK).                                                                                |
 | `mek_version`   | smallint               | Required. Identifies which MEK version was used to encrypt this DEK. Enables gradual MEK rotation — re-encrypt DEKs in batches, track progress via `WHERE mek_version = <old>`. |
@@ -217,7 +217,7 @@ Flat, append-only table for observability. Captures two kinds of entries:
 
 | Column          | Type        | Notes                                                                              |
 | --------------- | ----------- | ---------------------------------------------------------------------------------- |
-| `id`            | UUID PK     | `gen_random_uuid()`                                                                |
+| `id`            | UUID PK     | `uuidv7()`                                                                         |
 | `tenant_id`     | UUID        | Nullable. Null for system-level entries (e.g. failed login before tenant context). |
 | `principal_id`  | UUID        | Required. The system principal is used for system-level actions.                   |
 | `action`        | text        | Required. Dot-namespaced (e.g. `'auth.login.success'`, `'auth.register.failure'`). |
@@ -237,7 +237,7 @@ Write volume is low — entries come from auth actions (login, logout, token ref
 
 ## Shared Conventions
 
-- All PKs are UUIDs (`gen_random_uuid()`)
+- All PKs are UUIDs. Entity tables (principals, tenants) use `gen_random_uuid()` (v4) for unpredictable random IDs. All other tables use `uuidv7()` for time-ordered IDs with better B-tree index locality. Application-generated event IDs and correlation IDs also use UUID v7.
 - All timestamps are `timestamptz`
 - No PII in cleartext anywhere
 - Principals and tenants use `entity_status` for logical delete — rows are preserved because they're FK-referenced. Queries filter on `status = 'active'` by default.

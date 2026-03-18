@@ -1,4 +1,5 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import { v7 as uuidv7 } from "uuid";
 import type { RequestHandler } from "express";
 import type { Pool } from "pg";
 import type { UserCreatedEvent } from "@heim/domain";
@@ -239,8 +240,8 @@ export function registerHandler(
           });
         }
 
-        const correlationId = randomUUID();
-        const eventId = randomUUID();
+        const correlationId = uuidv7();
+        const eventId = uuidv7();
         const userCreatedEvent: UserCreatedEvent = {
           id: eventId,
           tenantId,
