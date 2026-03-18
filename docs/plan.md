@@ -49,13 +49,22 @@
 
 **Goal:** Frontend can work offline, queue commands, and reconcile with backend.
 
-- [ ] Implement command queue in frontend (IndexedDB or in-memory)
+- [x] Design sync architecture ([docs/sync-architecture.md](sync-architecture.md))
+- [x] Implement MobX model layer foundation (`Model` base class, `UserModel` subclass)
+- [ ] Implement command type, handler interface, and handler registry in `@heim/domain`
+- [ ] Implement first command handler (e.g. `UserCommandHandler`)
+- [ ] Implement `POST /api/sync/commands` (registry dispatch, idempotency, event append)
+- [ ] Implement `GET /api/sync/bootstrap` (fold all tenant aggregates, return snapshots + cursor)
+- [ ] Implement `SyncStore` with observable maps, pending commands, speculative events
 - [ ] Implement speculative state manager (apply commands locally via shared domain logic)
-- [ ] Implement sync protocol (send queued commands, receive confirmed events)
+- [ ] Implement confirmation and rollback (match by `commandId`, replace speculative with authoritative)
+- [ ] Wire up: replace `UserProvider` with `SyncStore` + `observer` components
 - [ ] Implement conflict detection (aggregate version mismatch)
-- [ ] Implement rollback and replay on conflict
 - [ ] Handle reconnection (sync queued commands on coming back online)
 - [ ] Test: offline command → reconnect → confirm/reject cycle
+- [ ] Delta sync endpoint (when needed)
+- [ ] IndexedDB persistence (when offline support is prioritized)
+- [ ] SSE/WS push channel (when real-time multi-device sync is needed)
 
 ### Phase 4: First Feature Bounded Context
 

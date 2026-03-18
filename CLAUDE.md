@@ -48,6 +48,14 @@ Filter to a specific package with `-F`:
     yarn turbo dev -F @heim/web                    # Web only (against remote API)
     docker compose -f packages/infra/compose.yml down -v   # Wipe database
 
+## Code Style
+
+### Class Field Naming
+
+- Public fields: no prefix (`streamId`, `state`)
+- Protected fields: underscore prefix (`_state`)
+- Private fields: ES private `#` syntax (`#version`) — NOT TypeScript `private` keyword
+
 ## Testing
 
 - **Mock only the database (SQL) and external APIs.** Use real implementations for everything else
@@ -60,8 +68,12 @@ Filter to a specific package with `-F`:
 - [docs/architecture.md](docs/architecture.md)
 - [docs/auth.md](docs/auth.md)
 - [docs/database.md](docs/database.md)
+- [docs/decisions.md](docs/decisions.md)
 - [docs/overview.md](docs/overview.md)
 - [docs/plan.md](docs/plan.md)
+- [docs/recap.md](docs/recap.md)
 - [docs/security.md](docs/security.md)
+- [docs/sync-architecture.md](docs/sync-architecture.md)
 - [docs/tech-stack.md](docs/tech-stack.md)
+- [docs/testing-guide.md](docs/testing-guide.md)
 - [docs/testing.md](docs/testing.md)
