@@ -1,6 +1,58 @@
 # Session Recap
 
-## Latest: User Aggregate, Event Hydration, and Client-Side Fold
+## Latest: Postgres 18 / UUID v7, Sync Engine Design, and Session Skills
+
+Three commits covering infrastructure upgrade, frontend sync architecture, and developer workflow.
+
+### What changed
+
+**Infrastructure** (`packages/infra/`):
+
+| File          | Change                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------- |
+| `compose.yml` | Upgraded from `postgres:17` to `postgres:18`                                           |
+| `init.sql`    | All indexed IDs (`events.event_id`, `forgettable_payloads.payload_id`) now use UUID v7 |
+
+UUID v7 gives time-ordered UUIDs — better index locality than v4 for append-heavy tables like the event store. The `register-handler` was updated to generate v7 IDs via the `uuid` package's v7 export.
+
+**Sync architecture** (`docs/sync-architecture.md`, `packages/web/src/sync/`):
+
+| File                   | Purpose                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `sync-architecture.md` | Full design doc: SyncStore, speculative state, command lifecycle, bootstrap flow |
+| `model.ts`             | `Model` base class — MobX observable with `id`, `createdAt`, `updatedAt`         |
+| `user-model.ts`        | `UserModel` — extends `Model` with `displayName`, `avatarUrl`, `updateFromEvent` |
+| `model.test.ts`        | Tests for `Model` base class                                                     |
+| `user-model.test.ts`   | Tests for `UserModel` event application                                          |
+
+The MobX model layer is the foundation for the offline-first sync engine. Models are observable stores that update from authoritative events and will later also apply speculative commands.
+
+**Developer workflow** (`.claude/skills/`):
+
+| File              | Purpose                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `recap/SKILL.md`  | `/recap` skill — updated to derive session boundary from git history |
+| `wrapup/SKILL.md` | `/wrapup` skill — session-end: updates docs, audits, commits         |
+
+Session boundaries are now inferred from `git log -1 --format=%h -- docs/recap.md` — no more embedded HTML comment metadata.
+
+### Test coverage
+
+105 tests across 21 test files, all passing. Typecheck and lint clean.
+
+### Next up
+
+Co-write the remaining register-flow events (no PII encryption needed):
+
+- `IdentityLinkedToUser` — emitted for every registration (links provider identity to principal)
+- `TenantCreated` — emitted when a new tenant is created (create-tenant invite path)
+- `MemberAddedToTenant` — emitted when a membership is created (both join and create paths)
+
+After those, the next milestone is command infrastructure and the sync engine implementation.
+
+---
+
+## Previous: User Aggregate, Event Hydration, and Client-Side Fold
 
 Three commits shipped together to close the loop from event append through to a hydrated UI state.
 

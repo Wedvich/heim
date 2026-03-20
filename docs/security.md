@@ -123,17 +123,15 @@ tests/supply-chain/
 
 - Session tokens: 32-byte `crypto.randomBytes`, base64url
 - Email correlation: HMAC-SHA256 with dedicated `EMAIL_HMAC_KEY`
-- Planned: 2-tier MEK→DEK envelope encryption for forgettable payloads
+- 2-tier MEK→DEK envelope encryption for forgettable payloads (AES-256-GCM via `encryptPayload`/`decryptPayload`)
+- `LocalKeyManagementService`: generates per-principal DEKs, encrypts them with MEK, supports MEK versioning
 - `secure` cookie flag in production
 
 ### Gaps
 
-1. **Forgettable payload encryption is not implemented.** `encrypted_payload` column exists but no code
-   encrypts/decrypts. PII stored now would be cleartext bytea.
-2. **MEK management not implemented.** `forgettable_payload_keys` table exists but no KMS abstraction.
-3. **Email HMAC is unsalted.** Documented and accepted tradeoff, but compromised key enables rainbow
+1. **Email HMAC is unsalted.** Documented and accepted tradeoff, but compromised key enables rainbow
    table attack.
-4. **No TLS enforcement visible.** Assumed via nginx, but no HSTS header.
+2. **No TLS enforcement visible.** Assumed via nginx, but no HSTS header.
 
 ### Suggested integration tests
 
