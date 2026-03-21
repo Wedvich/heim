@@ -16,7 +16,7 @@
 - [x] Define base aggregate class with apply/fold pattern
 - [ ] Define command types and command handler interface
 - [ ] Define repository interface
-- [ ] Implement stream loading (load stream, load at point in time)
+- [x] Implement stream loading (load stream, load at point in time)
 - [ ] Write comprehensive tests: reload, ordering, bitemporal queries
 - [ ] Implement basic projection infrastructure (subscribe to stream, fold into read model)
 - [ ] Add `compose.prod.yml` with nginx as production entry point (serve static bundle, proxy `/api` to Express)
@@ -54,11 +54,11 @@
 - [ ] Implement command type, handler interface, and handler registry in `@heim/domain`
 - [ ] Implement first command handler (e.g. `UserCommandHandler`)
 - [ ] Implement `POST /api/sync/commands` (registry dispatch, idempotency, event append)
-- [ ] Implement `GET /api/sync/bootstrap` (fold all tenant aggregates, return snapshots + cursor)
-- [ ] Implement `SyncStore` with observable maps, pending commands, speculative events
+- [x] Implement `GET /api/sync/bootstrap` (fold all tenant aggregates, return snapshots + cursor)
+- [x] Implement `SyncStore` with observable maps, pending commands, speculative events
 - [ ] Implement speculative state manager (apply commands locally via shared domain logic)
 - [ ] Implement confirmation and rollback (match by `commandId`, replace speculative with authoritative)
-- [ ] Wire up: replace `UserProvider` with `SyncStore` + `observer` components
+- [x] Wire up: replace `UserProvider` with `SyncStore` + `observer` components
 - [ ] Implement conflict detection (aggregate version mismatch)
 - [ ] Handle reconnection (sync queued commands on coming back online)
 - [ ] Test: offline command → reconnect → confirm/reject cycle

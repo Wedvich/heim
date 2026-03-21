@@ -1,6 +1,80 @@
 # Session Recap
 
-## Latest: Postgres 18 / UUID v7, Sync Engine Design, and Session Skills
+## Latest: Sync Bootstrap, Register Page, and SyncStore Wiring
+
+Five commits covering the sync bootstrap endpoint, register UI, SyncStore integration, and a Postgres volume fix.
+
+### What changed
+
+**Sync bootstrap** (`packages/api/`, `packages/domain/`, `packages/web/`):
+
+| File                                             | Change                                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `api/src/event-store/load-tenant-events.ts`      | New: loads all events for a tenant, decrypts forgettable payloads, folds via aggregate registry |
+| `api/src/event-store/load-tenant-events.test.ts` | Tests for tenant event loading                                                                  |
+| `api/src/routes/sync.ts`                         | New: `GET /api/sync/bootstrap` — returns folded aggregate states + cursor                       |
+| `api/src/routes/sync.test.ts`                    | Tests for bootstrap endpoint                                                                    |
+| `domain/src/aggregate-registry.ts`               | New: registry mapping stream prefixes to aggregate builders                                     |
+| `domain/src/index.ts`                            | Re-exports aggregate registry                                                                   |
+| `web/src/sync/sync-store.ts`                     | New: MobX `SyncStore` — observable maps for users, bootstraps from API                          |
+| `web/src/sync/sync-store.test.ts`                | Tests for SyncStore                                                                             |
+| `web/src/sync/api.ts`                            | New: `fetchBootstrap` typed fetch wrapper                                                       |
+| `web/src/sync/use-sync-bootstrap.ts`             | New: React hook to trigger bootstrap on mount                                                   |
+| `web/src/sync/SyncBootstrap.tsx`                 | New: component that bootstraps SyncStore and renders children                                   |
+
+**SyncStore wiring** (`packages/web/`):
+
+| File                            | Change                                                |
+| ------------------------------- | ----------------------------------------------------- |
+| `web/src/main.tsx`              | Replaced `UserProvider` with `SyncBootstrap`          |
+| `web/src/pages/HomePage.tsx`    | Reads user data from SyncStore instead of UserContext |
+| `web/src/user/user-context.tsx` | Removed (replaced by SyncStore)                       |
+| `web/src/user/api.ts`           | Removed (replaced by sync/api.ts)                     |
+
+**Register page** (`packages/api/`, `packages/web/`):
+
+| File                                      | Change                                                                 |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| `web/src/pages/RegisterPage.tsx`          | New: registration page with Google Sign-In and invite token validation |
+| `web/src/App.tsx`                         | Added `/register` route                                                |
+| `web/src/auth/api.ts`                     | Added `postRegister` fetch wrapper                                     |
+| `web/src/hooks/use-google-sign-in.ts`     | Updated to support register callback variant                           |
+| `web/src/types/google-gis.d.ts`           | New: TypeScript declarations for Google Identity Services              |
+| `api/src/auth/google-callback-handler.ts` | Refactored to extract shared OIDC verification logic                   |
+| `api/src/auth/register-handler.ts`        | Refactored handler structure                                           |
+| `api/src/auth/invite-repository.ts`       | Updated invite lookup                                                  |
+| `api/src/routes/auth.ts`                  | Updated register route wiring                                          |
+| `scripts/create-invite.ts`                | New: CLI script to create invite tokens for testing                    |
+
+**Infrastructure fix:**
+
+| File                         | Change                              |
+| ---------------------------- | ----------------------------------- |
+| `packages/infra/compose.yml` | Fixed Postgres 18 volume mount path |
+
+**Decision log:**
+
+| File                | Change                                                      |
+| ------------------- | ----------------------------------------------------------- |
+| `docs/decisions.md` | Added deferred decision: event stream consistency hardening |
+
+### Test coverage
+
+124 tests across 24 test files, all passing. Typecheck and lint clean.
+
+### Next up
+
+Co-write the remaining register-flow events (no PII encryption needed):
+
+- `IdentityLinkedToUser` — emitted for every registration (links provider identity to principal)
+- `TenantCreated` — emitted when a new tenant is created (create-tenant invite path)
+- `MemberAddedToTenant` — emitted when a membership is created (both join and create paths)
+
+Then: command infrastructure, speculative state manager, and conflict detection for the sync engine.
+
+---
+
+## Previous: Postgres 18 / UUID v7, Sync Engine Design, and Session Skills
 
 Three commits covering infrastructure upgrade, frontend sync architecture, and developer workflow.
 
