@@ -1,10 +1,11 @@
 import { Link } from "react-router";
+import { observer } from "mobx-react-lite";
 import { useAuth } from "../auth/auth-context";
-import { useUser } from "../user/user-context";
+import { syncStore } from "../sync/sync-store";
 
-export function HomePage() {
+export const HomePage = observer(function HomePage() {
   const { session, logout } = useAuth();
-  const { user } = useUser();
+  const user = session ? syncStore.users.get(session.principal.id) : undefined;
 
   return (
     <div style={{ padding: 32 }}>
@@ -37,4 +38,4 @@ export function HomePage() {
       </div>
     </div>
   );
-}
+});
