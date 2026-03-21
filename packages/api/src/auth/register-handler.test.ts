@@ -209,6 +209,7 @@ describe("registerHandler", () => {
         mekVersion: 1,
       }),
     );
+    // Join path: only UserCreated, no TenantCreated
     expect(mockAppendEvents).toHaveBeenCalledWith(client, [
       expect.objectContaining({
         eventType: "UserCreated",
@@ -236,6 +237,10 @@ describe("registerHandler", () => {
     expect(mockWriteAuditLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ action: "auth.register.success" }),
+    );
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: "auth.login.success" }),
     );
     expect(mockWriteAuditLog).toHaveBeenCalledWith(
       expect.anything(),
@@ -275,7 +280,34 @@ describe("registerHandler", () => {
     );
 
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ tenant: expect.any(Object) }));
-    expect(mockAppendEvents).toHaveBeenCalled();
+    expect(mockAppendEvents).toHaveBeenCalledWith(client, [
+      expect.objectContaining({
+        eventType: "TenantCreated",
+        streamType: "Tenant",
+        streamId: "new-tenant",
+        streamPosition: 1,
+        payload: expect.objectContaining({
+          name: "Acme",
+          slug: expect.any(String),
+          createdByPrincipalId: "new-principal",
+        }),
+      }),
+      expect.objectContaining({
+        eventType: "UserCreated",
+        streamType: "User",
+        streamId: "new-principal",
+      }),
+    ]);
+
+    // Both events share a correlationId
+    const appendedEvents = mockAppendEvents.mock.calls[0]![1] as unknown[];
+    expect(appendedEvents).toHaveLength(2);
+    const [first, second] = appendedEvents as [
+      { correlationId: string },
+      { correlationId: string },
+    ];
+    expect(first.correlationId).toBe(second.correlationId);
+
     expect(mockStoreForgettablePayload).toHaveBeenCalled();
   });
 

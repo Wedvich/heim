@@ -74,6 +74,7 @@ export function googleCallbackHandler(
 
       if (isRegister) {
         // --- Registration flow ---
+        // TODO: accept tenantName/tenantSlug from registration form
         const result = await executeRegistration(
           registry,
           db,
@@ -83,6 +84,8 @@ export function googleCallbackHandler(
             provider: "google",
             credential,
             inviteToken: registerState.invite,
+            tenantName: "Dev Tenant",
+            tenantSlug: "dev-tenant",
             userAgent: req.requestContext.userAgent,
           },
           req.log,

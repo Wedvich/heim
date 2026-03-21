@@ -27,3 +27,17 @@ export interface UserCreatedEvent extends DomainEvent {
 }
 
 export type UserEvent = UserCreatedEvent;
+
+export interface TenantCreatedPayload extends Record<string, unknown> {
+  readonly name: string;
+  readonly slug: string;
+  readonly createdByPrincipalId: string;
+}
+
+export interface TenantCreatedEvent extends DomainEvent {
+  readonly eventType: "TenantCreated";
+  readonly streamType: "Tenant";
+  readonly payload: TenantCreatedPayload;
+}
+
+export type TenantEvent = TenantCreatedEvent;

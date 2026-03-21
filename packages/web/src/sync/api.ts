@@ -23,7 +23,10 @@ export async function fetchBootstrap(): Promise<BootstrapResponse | null> {
   const data = (await res.json()) as BootstrapResponse;
 
   for (const snapshot of data.snapshots) {
-    if (snapshot.streamType === "User" && typeof snapshot.state.createdAt === "string") {
+    if (
+      (snapshot.streamType === "User" || snapshot.streamType === "Tenant") &&
+      typeof snapshot.state.createdAt === "string"
+    ) {
       snapshot.state.createdAt = new Date(snapshot.state.createdAt);
     }
   }

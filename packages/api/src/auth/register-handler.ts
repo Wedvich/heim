@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from "uuid";
 import type { RequestHandler } from "express";
 import type { Pool } from "pg";
 import type { Logger } from "pino";
-import type { UserCreatedEvent } from "@heim/domain";
+import type { TenantCreatedEvent, UserCreatedEvent } from "@heim/domain";
 import type { OidcVerifierRegistry } from "./oidc/registry.ts";
 import { TokenVerificationError, UnknownProviderError } from "./oidc/types.ts";
 import {
@@ -143,6 +143,8 @@ export async function executeRegistration(
     });
 
     // 6. Tenant handling
+    const correlationId = uuidv7();
+    let tenantCreatedEvent: TenantCreatedEvent | null = null;
     let tenantId: string;
     if (invite.tenantId) {
       // Join existing tenant
@@ -199,6 +201,26 @@ export async function executeRegistration(
         `INSERT INTO memberships (principal_id, tenant_id, role) VALUES ($1, $2, $3)`,
         [principalId, tenantId, "owner"],
       );
+
+      tenantCreatedEvent = {
+        id: uuidv7(),
+        tenantId,
+        streamId: tenantId,
+        streamType: "Tenant",
+        streamPosition: 1,
+        eventType: "TenantCreated",
+        correlationId,
+        causationId: `command:${correlationId}`,
+        actingPrincipalId: principalId,
+        effectivePrincipalId: null,
+        payload: {
+          name: tenantName,
+          slug,
+          createdByPrincipalId: principalId,
+        },
+        metadata: {},
+        actualTime: new Date(),
+      };
     }
 
     // 7. Mark invite used
@@ -229,7 +251,6 @@ export async function executeRegistration(
       });
     }
 
-    const correlationId = uuidv7();
     const eventId = uuidv7();
     const userCreatedEvent: UserCreatedEvent = {
       id: eventId,
@@ -251,7 +272,10 @@ export async function executeRegistration(
       actualTime: new Date(),
     };
 
-    await appendEvents(client, [userCreatedEvent]);
+    const eventsToAppend = tenantCreatedEvent
+      ? [tenantCreatedEvent, userCreatedEvent]
+      : [userCreatedEvent];
+    await appendEvents(client, eventsToAppend);
     await storeForgettablePayload(client, {
       eventId,
       tenantId,
@@ -281,6 +305,13 @@ export async function executeRegistration(
       action: "auth.register.success",
       resourceType: "identity",
       resourceId: newIdentity.id,
+      detail,
+    });
+
+    writeAuditLog(db, {
+      principalId,
+      tenantId,
+      action: "auth.login.success",
       detail,
     });
 

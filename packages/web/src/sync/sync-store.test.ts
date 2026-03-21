@@ -3,6 +3,14 @@ import { autorun } from "mobx";
 import type { AggregateSnapshot } from "./api.ts";
 import { SyncStore } from "./sync-store.ts";
 
+function makeTenantSnapshot(
+  streamId: string,
+  state: Record<string, unknown>,
+  version: number,
+): AggregateSnapshot {
+  return { streamId, streamType: "Tenant", version, state };
+}
+
 function makeUserSnapshot(
   streamId: string,
   state: Record<string, unknown>,
@@ -58,6 +66,31 @@ describe("SyncStore", () => {
 
     expect(store.users.size).toBe(0);
     expect(store.status).toBe("ready");
+  });
+
+  it("populates tenants map from snapshots", () => {
+    const store = new SyncStore();
+    const snapshots = [
+      makeTenantSnapshot(
+        "t1",
+        {
+          tenantId: "t1",
+          createdAt: new Date("2025-01-01"),
+          name: "Acme",
+          slug: "acme",
+        },
+        1,
+      ),
+    ];
+
+    store.loadSnapshots(snapshots, "10");
+
+    expect(store.tenants.size).toBe(1);
+
+    const tenant = store.tenants.get("t1")!;
+    expect(tenant.name).toBe("Acme");
+    expect(tenant.slug).toBe("acme");
+    expect(tenant.version).toBe(1);
   });
 
   it("silently skips unknown stream types", () => {
