@@ -19,10 +19,12 @@ function createTestApp(verifyFn: OidcProviderVerifier["verify"]) {
   registry.register({ providerId: "google", verify: verifyFn });
 
   const pool = {} as never;
+  const emailHmacKey = "test-hmac-key";
+  const kms = {} as never;
   const app = express();
   app.use(express.urlencoded({ extended: false }));
   app.use(requestContextMiddleware);
-  app.post("/api/auth/google/callback", googleCallbackHandler(registry, pool));
+  app.post("/api/auth/google/callback", googleCallbackHandler(registry, pool, emailHmacKey, kms));
   return { app, registry };
 }
 

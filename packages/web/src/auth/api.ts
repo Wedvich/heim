@@ -14,6 +14,12 @@ export async function fetchSession(): Promise<Session | null> {
   return res.json() as Promise<Session>;
 }
 
+export async function fetchInviteStatus(token: string): Promise<{ valid: boolean }> {
+  const res = await apiFetch(`/api/auth/invite-status?token=${encodeURIComponent(token)}`);
+  if (!res.ok) throw new Error(`invite status check failed: ${res.status}`);
+  return res.json() as Promise<{ valid: boolean }>;
+}
+
 export async function postLogout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });
 }

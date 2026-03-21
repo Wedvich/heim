@@ -1,4 +1,4 @@
-import type { PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 
 export interface Invite {
   id: string;
@@ -34,6 +34,14 @@ export async function findValidInvite(client: PoolClient, token: string): Promis
     createdBy: row.created_by,
     expiresAt: row.expires_at,
   };
+}
+
+export async function checkInviteValid(db: Pool, token: string): Promise<boolean> {
+  const result = await db.query(
+    `SELECT 1 FROM invites WHERE token = $1 AND used_at IS NULL AND expires_at > now()`,
+    [token],
+  );
+  return result.rows.length > 0;
 }
 
 export async function markInviteUsed(

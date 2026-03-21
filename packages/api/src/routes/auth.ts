@@ -3,10 +3,11 @@ import { pool } from "../db.ts";
 import type { OidcVerifierRegistry } from "../auth/oidc/registry.ts";
 import type { KeyManagementService } from "../crypto/kms.ts";
 import { googleCallbackHandler } from "../auth/google-callback-handler.ts";
+import { checkInviteValid } from "../auth/invite-repository.ts";
 import { loginHandler } from "../auth/login-handler.ts";
 import { registerHandler } from "../auth/register-handler.ts";
 import { COOKIE_NAME, cookieOptions, invalidateSession } from "../middleware/session.ts";
-import { writeAuditLog } from "../audit/audit-logger.ts";
+import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "../audit/audit-logger.ts";
 
 export function createAuthRouter(
   oidcRegistry: OidcVerifierRegistry,
@@ -20,7 +21,29 @@ export function createAuthRouter(
     next();
   });
 
-  router.post("/google/callback", googleCallbackHandler(oidcRegistry, pool));
+  // TODO: Add rate limiting — this unauthenticated endpoint is vulnerable to
+  // brute-force / DoS without it. See docs/security.md (A06, A07).
+  router.get("/invite-status", async (req, res) => {
+    const token = req.query.token;
+    if (typeof token !== "string" || !token) {
+      res.status(400).json({ error: "missing_token" });
+      return;
+    }
+
+    const valid = await checkInviteValid(pool, token);
+
+    if (!valid) {
+      writeAuditLog(pool, {
+        principalId: SYSTEM_PRINCIPAL_ID,
+        action: "auth.invite.check_failed",
+        detail: { user_agent: req.requestContext.userAgent },
+      });
+    }
+
+    res.json({ valid });
+  });
+
+  router.post("/google/callback", googleCallbackHandler(oidcRegistry, pool, emailHmacKey, kms));
   router.post("/login", loginHandler(oidcRegistry, pool));
   router.post("/register", registerHandler(oidcRegistry, pool, emailHmacKey, kms));
 

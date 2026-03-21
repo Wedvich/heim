@@ -18,6 +18,7 @@ export type AuditAction =
   | "auth.logout"
   | "auth.register.success"
   | "auth.register.failure"
+  | "auth.invite.check_failed"
   | "auth.invite.redeemed"
   | "auth.provider.linked";
 

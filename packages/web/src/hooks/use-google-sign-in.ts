@@ -1,26 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
-declare global {
-  interface Window {
-    google: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string;
-            ux_mode: "redirect";
-            login_uri: string;
-            state?: string;
-          }) => void;
-          renderButton: (element: HTMLElement, options: { theme?: string; size?: string }) => void;
-        };
-      };
-    };
-  }
+export interface GoogleSignInOptions {
+  state?: string;
 }
 
-export function useGoogleSignIn(returnTo: string) {
+export function useGoogleSignIn(returnTo: string, options?: GoogleSignInOptions) {
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const stateOverride = options?.state;
 
   useEffect(() => {
     const clientId = import.meta.env.GOOGLE_CLIENT_ID;
@@ -30,13 +18,14 @@ export function useGoogleSignIn(returnTo: string) {
     }
 
     const loginUri = window.location.origin + "/api/auth/google/callback";
+    const state = stateOverride ?? returnTo;
 
     function initializeGis() {
       window.google.accounts.id.initialize({
         client_id: clientId,
         ux_mode: "redirect",
         login_uri: loginUri,
-        state: returnTo,
+        state,
       });
       setInitialized(true);
     }
@@ -56,7 +45,7 @@ export function useGoogleSignIn(returnTo: string) {
     script.onload = () => initializeGis();
     script.onerror = () => setError("Failed to load Google Sign-In");
     document.head.appendChild(script);
-  }, [returnTo]);
+  }, [returnTo, stateOverride]);
 
   const buttonRef = useCallback(
     (el: HTMLElement | null) => {
