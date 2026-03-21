@@ -93,8 +93,14 @@ export function googleCallbackHandler(
           return;
         }
 
+        const regSlugResult = await db.query<{ slug: string }>(
+          `SELECT slug FROM tenants WHERE id = $1`,
+          [result.tenantId],
+        );
+        const regSlug = regSlugResult.rows[0]?.slug;
+
         res.cookie(COOKIE_NAME, result.sessionToken, cookieOptions());
-        res.redirect(returnTo);
+        res.redirect(regSlug ? `/${regSlug}${returnTo === "/" ? "/" : returnTo}` : returnTo);
       } else {
         // --- Login flow ---
         let identity;
@@ -153,8 +159,14 @@ export function googleCallbackHandler(
           detail,
         });
 
+        const loginSlugResult = await db.query<{ slug: string }>(
+          `SELECT slug FROM tenants WHERE id = $1`,
+          [membership.tenant_id],
+        );
+        const loginSlug = loginSlugResult.rows[0]?.slug;
+
         res.cookie(COOKIE_NAME, token, cookieOptions());
-        res.redirect(returnTo);
+        res.redirect(loginSlug ? `/${loginSlug}${returnTo === "/" ? "/" : returnTo}` : returnTo);
       }
     } catch (err) {
       req.log.error({ err }, "Unexpected error in Google callback handler");

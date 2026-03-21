@@ -21,7 +21,10 @@ const SESSION: SessionContext = {
 function makeApp(sessionOverride: SessionContext | null, pool: ReturnType<typeof makePool>) {
   const app = express();
   app.use((req, _res, next) => {
-    if (sessionOverride) req.session = sessionOverride;
+    if (sessionOverride) {
+      req.session = sessionOverride;
+      req.tenantContext = { tenantId: sessionOverride.tenantId, role: "owner" };
+    }
     next();
   });
   app.use("/api/sync", createSyncRouter(pool, kms));

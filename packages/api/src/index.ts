@@ -7,6 +7,7 @@ import { logger } from "./logger.ts";
 import { requestLogger } from "./middleware/request-logger.ts";
 import { requestContextMiddleware } from "./middleware/request-context.ts";
 import { sessionMiddleware } from "./middleware/session.ts";
+import { tenantContextMiddleware } from "./middleware/tenant-context.ts";
 import { createAuthRouter } from "./routes/auth.ts";
 import { createTenantsRouter } from "./routes/tenants.ts";
 import { createSyncRouter } from "./routes/sync.ts";
@@ -54,6 +55,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(requestLogger);
 app.use(requestContextMiddleware);
 app.use(sessionMiddleware);
+app.use(tenantContextMiddleware);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });

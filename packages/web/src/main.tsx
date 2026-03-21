@@ -4,15 +4,12 @@ import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import "./index.css";
 import { AuthProvider } from "./auth/auth-context";
-import { SyncBootstrap } from "./sync/SyncBootstrap";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <SyncBootstrap>
-          <App />
-        </SyncBootstrap>
+        <App />
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

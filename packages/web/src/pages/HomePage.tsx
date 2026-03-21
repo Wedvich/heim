@@ -29,7 +29,7 @@ export const HomePage = observer(function HomePage() {
         </p>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <Link to="/settings" style={{ padding: "8px 16px" }}>
+        <Link to="settings" style={{ padding: "8px 16px" }}>
           Settings
         </Link>
         <button onClick={() => void logout()} style={{ padding: "8px 16px", cursor: "pointer" }}>

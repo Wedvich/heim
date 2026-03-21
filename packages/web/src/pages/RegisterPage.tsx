@@ -18,7 +18,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 type InviteStatus = "loading" | "valid" | "invalid";
 
 export function RegisterPage() {
-  const { status } = useAuth();
+  const { status, session } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [inviteStatus, setInviteStatus] = useState<InviteStatus>("loading");
@@ -29,9 +29,10 @@ export function RegisterPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      void navigate("/", { replace: true });
+      const target = session?.tenant ? `/${session.tenant.slug}/` : "/";
+      void navigate(target, { replace: true });
     }
-  }, [status, navigate]);
+  }, [status, session, navigate]);
 
   useEffect(() => {
     if (!inviteCode) {
