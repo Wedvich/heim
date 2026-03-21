@@ -182,6 +182,10 @@ Summary of all architectural and technical decisions made during the initial pla
 
 These were discussed but explicitly deferred:
 
+- **Event stream consistency hardening** — two low-cost options to consider when the command handler surface area grows:
+  1. _Read-side contiguity assertion_ — validate in `buildAggregate` that `streamPosition` values are contiguous (1, 2, 3, …) and throw on gaps. Catches event-store infrastructure bugs.
+  2. _Explicit `expectedVersion` on `appendEvents`_ — require callers to pass the version they loaded, validated before inserting. Catches command-handler programming mistakes (e.g., forgetting to load existing events) earlier than the DB unique constraint would.
+     Neither is a correctness fix — the DB `UNIQUE (tenant_id, stream_id, stream_position)` constraint and `ORDER BY` are sufficient today. These are defense-in-depth measures.
 - **Notification delivery mechanism** — abstracted but not implemented. Design for extensibility (push, email, SMS per user preference).
 - **Background job system** — likely BullMQ or similar, but not needed until notification/scheduler features are built.
 - **Specific frontend state management** — to be decided when building the sync engine (Phase 3).
