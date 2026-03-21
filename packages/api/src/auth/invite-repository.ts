@@ -44,6 +44,35 @@ export async function checkInviteValid(db: Pool, token: string): Promise<boolean
   return result.rows.length > 0;
 }
 
+export interface InviteInfo {
+  valid: boolean;
+  tenantId: string | null;
+  tenantName: string | null;
+  role: string | null;
+}
+
+export async function getInviteInfo(db: Pool, token: string): Promise<InviteInfo> {
+  const result = await db.query<{
+    tenant_id: string | null;
+    tenant_name: string | null;
+    role: string;
+  }>(
+    `SELECT i.tenant_id, t.name AS tenant_name, i.role
+     FROM invites i
+     LEFT JOIN tenants t ON t.id = i.tenant_id
+     WHERE i.token = $1 AND i.used_at IS NULL AND i.expires_at > now()`,
+    [token],
+  );
+  const row = result.rows[0];
+  if (!row) return { valid: false, tenantId: null, tenantName: null, role: null };
+  return {
+    valid: true,
+    tenantId: row.tenant_id,
+    tenantName: row.tenant_name,
+    role: row.role,
+  };
+}
+
 export async function markInviteUsed(
   client: PoolClient,
   inviteId: string,

@@ -5,6 +5,7 @@ import type { Pool } from "pg";
 import type { Logger } from "pino";
 import type { TenantCreatedEvent, UserCreatedEvent } from "@heim/domain";
 import type { OidcVerifierRegistry } from "./oidc/registry.ts";
+import type { VerifiedIdentity } from "./oidc/types.ts";
 import { TokenVerificationError, UnknownProviderError } from "./oidc/types.ts";
 import {
   findPrincipalByProviderIdentity,
@@ -35,21 +36,33 @@ export interface RegisterParams {
   userAgent: string;
 }
 
+export interface RegisterWithIdentityParams {
+  inviteToken: string;
+  tenantName?: string;
+  tenantSlug?: string;
+  userAgent: string;
+}
+
 export type RegisterResult =
   | { ok: true; sessionToken: string; principalId: string; tenantId: string }
   | { ok: false; error: string; status: number };
 
-export async function executeRegistration(
-  registry: OidcVerifierRegistry,
+/**
+ * Executes registration with an already-verified identity.
+ * Used by both the single-step flow (credential verified inline) and the
+ * multi-step flow (credential verified earlier, claims carried in heim_reg cookie).
+ */
+export async function executeRegistrationWithIdentity(
   db: Pool,
   emailHmacKey: string,
   kms: KeyManagementService,
-  params: RegisterParams,
+  identity: VerifiedIdentity,
+  params: RegisterWithIdentityParams,
   log: Logger,
 ): Promise<RegisterResult> {
-  const { provider, credential, inviteToken, tenantName, tenantSlug, userAgent } = params;
+  const { inviteToken, tenantName, tenantSlug, userAgent } = params;
   const detail: { provider: string; user_agent: string } = {
-    provider,
+    provider: identity.provider,
     user_agent: userAgent,
   };
 
@@ -69,33 +82,7 @@ export async function executeRegistration(
       return { ok: false, error: "invalid_invite", status: 400 };
     }
 
-    // 2. Verify OIDC credential
-    let identity;
-    try {
-      identity = await registry.verify(provider, credential);
-    } catch (err) {
-      await client.query("ROLLBACK");
-      if (err instanceof UnknownProviderError) {
-        writeAuditLog(db, {
-          principalId: SYSTEM_PRINCIPAL_ID,
-          action: "auth.register.failure",
-          detail: { ...detail, reason: "unknown_provider" },
-        });
-        return { ok: false, error: "unknown_provider", status: 400 };
-      }
-      if (err instanceof TokenVerificationError) {
-        log.warn({ provider, err }, "Token verification failed");
-        writeAuditLog(db, {
-          principalId: SYSTEM_PRINCIPAL_ID,
-          action: "auth.register.failure",
-          detail: { ...detail, reason: "token_verification_failed" },
-        });
-        return { ok: false, error: "verification_failed", status: 401 };
-      }
-      throw err;
-    }
-
-    // 3. Check already registered
+    // 2. Check already registered
     const existing = await findPrincipalByProviderIdentity(
       db,
       identity.provider,
@@ -111,7 +98,7 @@ export async function executeRegistration(
       return { ok: false, error: "already_registered", status: 409 };
     }
 
-    // 4. Email merge or create principal
+    // 3. Email merge or create principal
     let principalId: string;
     let merged = false;
     const emailHash = identity.emailVerified ? hashEmail(identity.email, emailHmacKey) : null;
@@ -134,7 +121,7 @@ export async function executeRegistration(
       principalId = principalResult.rows[0]!.id;
     }
 
-    // 5. Create identity
+    // 4. Create identity
     const newIdentity = await createIdentity(client, {
       principalId,
       provider: identity.provider,
@@ -142,7 +129,7 @@ export async function executeRegistration(
       emailHash,
     });
 
-    // 6. Tenant handling
+    // 5. Tenant handling
     const correlationId = uuidv7();
     let tenantCreatedEvent: TenantCreatedEvent | null = null;
     let tenantId: string;
@@ -223,10 +210,10 @@ export async function executeRegistration(
       };
     }
 
-    // 7. Mark invite used
+    // 6. Mark invite used
     await markInviteUsed(client, invite.id, principalId);
 
-    // 8. Co-write UserCreated event with forgettable payload
+    // 7. Co-write UserCreated event with forgettable payload
     let plaintextDek: Buffer;
     if (merged) {
       const existingKey = await getForgettablePayloadKey(client, principalId);
@@ -288,7 +275,7 @@ export async function executeRegistration(
       dek: plaintextDek,
     });
 
-    // 9. Create session (inline to stay within transaction)
+    // 8. Create session (inline to stay within transaction)
     const sessionToken = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
     await client.query(
@@ -298,7 +285,7 @@ export async function executeRegistration(
 
     await client.query("COMMIT");
 
-    // 10. Audit logs (fire-and-forget, after commit)
+    // 9. Audit logs (fire-and-forget, after commit)
     writeAuditLog(db, {
       principalId,
       tenantId,
@@ -321,7 +308,7 @@ export async function executeRegistration(
       action: "auth.invite.redeemed",
       resourceType: "invite",
       resourceId: invite.id,
-      detail: { provider },
+      detail: { provider: identity.provider },
     });
 
     if (merged) {
@@ -331,7 +318,7 @@ export async function executeRegistration(
         action: "auth.provider.linked",
         resourceType: "principal",
         resourceId: principalId,
-        detail: { provider },
+        detail: { provider: identity.provider },
       });
     }
 
@@ -342,6 +329,57 @@ export async function executeRegistration(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Executes registration by first verifying the OIDC credential, then delegating
+ * to executeRegistrationWithIdentity. Used by the single-step registration
+ * endpoint (POST /api/auth/register).
+ */
+export async function executeRegistration(
+  registry: OidcVerifierRegistry,
+  db: Pool,
+  emailHmacKey: string,
+  kms: KeyManagementService,
+  params: RegisterParams,
+  log: Logger,
+): Promise<RegisterResult> {
+  const { provider, credential, inviteToken, tenantName, tenantSlug, userAgent } = params;
+  const detail: { provider: string; user_agent: string } = {
+    provider,
+    user_agent: userAgent,
+  };
+
+  let identity: VerifiedIdentity;
+  try {
+    identity = await registry.verify(provider, credential);
+  } catch (err) {
+    if (err instanceof UnknownProviderError) {
+      writeAuditLog(db, {
+        principalId: SYSTEM_PRINCIPAL_ID,
+        action: "auth.register.failure",
+        detail: { ...detail, reason: "unknown_provider" },
+      });
+      return { ok: false, error: "unknown_provider", status: 400 };
+    }
+    if (err instanceof TokenVerificationError) {
+      log.warn({ provider, err }, "Token verification failed");
+      writeAuditLog(db, {
+        principalId: SYSTEM_PRINCIPAL_ID,
+        action: "auth.register.failure",
+        detail: { ...detail, reason: "token_verification_failed" },
+      });
+      return { ok: false, error: "verification_failed", status: 401 };
+    }
+    throw err;
+  }
+
+  return executeRegistrationWithIdentity(db, emailHmacKey, kms, identity, {
+    inviteToken,
+    tenantName,
+    tenantSlug,
+    userAgent,
+  }, log);
 }
 
 export function registerHandler(

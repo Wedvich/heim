@@ -30,6 +30,15 @@ if (!masterEncryptionKey) {
   throw new Error("MASTER_ENCRYPTION_KEY is required");
 }
 
+const regTokenSecretBase64 = process.env.REG_TOKEN_SECRET;
+if (!regTokenSecretBase64) {
+  throw new Error("REG_TOKEN_SECRET is required");
+}
+const regTokenSecret = Buffer.from(regTokenSecretBase64, "base64");
+if (regTokenSecret.length !== 32) {
+  throw new Error("REG_TOKEN_SECRET must be 32 bytes (base64-encoded)");
+}
+
 const corsOrigin = process.env.CORS_ORIGIN;
 if (!corsOrigin) {
   throw new Error("CORS_ORIGIN is required");
@@ -59,7 +68,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey, kms));
+app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey, kms, regTokenSecret));
 app.use("/api/tenants", createTenantsRouter());
 app.use("/api/sync", createSyncRouter(pool, kms));
 app.use("/api/user", createUserRouter(pool, kms));

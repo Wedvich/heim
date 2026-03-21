@@ -21,8 +21,9 @@ Set these before starting the API (or in a `.env` file if you use one):
 | `GOOGLE_CLIENT_ID`      | Login + Register | `123456.apps.googleusercontent.com`       |
 | `EMAIL_HMAC_KEY`        | Register only    | Any secret string, e.g. `my-dev-hmac-key` |
 | `MASTER_ENCRYPTION_KEY` | Register only    | Base64-encoded 32 bytes (see below)       |
+| `REG_TOKEN_SECRET`      | Register only    | Base64-encoded 32 bytes (see below)       |
 
-Generate a dev `MASTER_ENCRYPTION_KEY`:
+Generate dev secrets (`MASTER_ENCRYPTION_KEY` and `REG_TOKEN_SECRET`):
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
