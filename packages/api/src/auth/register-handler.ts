@@ -58,7 +58,7 @@ export async function executeRegistrationWithIdentity(
   kms: KeyManagementService,
   identity: VerifiedIdentity,
   params: RegisterWithIdentityParams,
-  log: Logger,
+  _log: Logger,
 ): Promise<RegisterResult> {
   const { inviteToken, tenantName, tenantSlug, userAgent } = params;
   const detail: { provider: string; user_agent: string } = {
@@ -374,12 +374,19 @@ export async function executeRegistration(
     throw err;
   }
 
-  return executeRegistrationWithIdentity(db, emailHmacKey, kms, identity, {
-    inviteToken,
-    tenantName,
-    tenantSlug,
-    userAgent,
-  }, log);
+  return executeRegistrationWithIdentity(
+    db,
+    emailHmacKey,
+    kms,
+    identity,
+    {
+      inviteToken,
+      tenantName,
+      tenantSlug,
+      userAgent,
+    },
+    log,
+  );
 }
 
 export function registerHandler(
