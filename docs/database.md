@@ -197,6 +197,16 @@ The MEK MUST be stored in a KMS (AWS KMS, GCP Cloud KMS, or HashiCorp Vault) in 
 
 The MEK and `EMAIL_HMAC_KEY` MUST be separate secrets with independent access controls. A single compromise should not expose both the encryption hierarchy and the identity correlation mechanism.
 
+### Required secrets
+
+| Secret                 | Format                 | Purpose                                                                                              |
+| ---------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| `MASTER_ENCRYPTION_KEY`| 32 bytes, base64       | MEK — wraps per-principal DEKs for forgettable payload encryption. Must be backed by KMS in prod.    |
+| `EMAIL_HMAC_KEY`       | Arbitrary length       | HMAC-SHA256 key for email-hash-based identity correlation across providers.                           |
+| `REG_TOKEN_SECRET`     | 32 bytes, base64       | AES-256-GCM key for encrypting the short-lived registration cookie (`heim_reg`) during multi-step registration. Ephemeral-use only — protects PII (email, name, avatar) in transit between the Google auth callback and the registration completion endpoint. |
+
+All three MUST be independent. Rotation of one must not affect the others. In local development, random values generated at first start are acceptable. In production, use env vars sourced from a secrets manager.
+
 **Key loss:** If the MEK is lost, all forgettable payloads become permanently unreadable. This is identical to the crypto shredding outcome but unintentional. The MEK must have a documented backup/escrow procedure. This procedure should be specified in operational documentation before production deployment.
 
 **MEK rotation:** the application decrypts each DEK with the old MEK (identified by `mek_version`) and re-encrypts it with the new MEK, updating `mek_version` accordingly. Progress is trackable via `WHERE mek_version = <old>`.
