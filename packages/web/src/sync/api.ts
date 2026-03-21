@@ -17,7 +17,7 @@ export async function fetchBootstrap(): Promise<BootstrapResponse | null> {
     credentials: "include",
   });
 
-  if (res.status === 401) return null;
+  if (res.status === 401 || res.status === 403) return null;
   if (!res.ok) throw new Error(`bootstrap fetch failed: ${res.status}`);
 
   const data = (await res.json()) as BootstrapResponse;

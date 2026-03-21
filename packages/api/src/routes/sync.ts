@@ -15,12 +15,12 @@ export function createSyncRouter(pool: Pool, kms: KeyManagementService): Router 
   const router = Router();
 
   router.get("/bootstrap", async (req, res) => {
-    if (!req.session) {
+    if (!req.tenantContext) {
       res.status(401).json({ error: "not_authenticated" });
       return;
     }
 
-    const { tenantId } = req.session;
+    const { tenantId } = req.tenantContext;
 
     const client = await pool.connect();
     let events: HydratedTenantEvent[];

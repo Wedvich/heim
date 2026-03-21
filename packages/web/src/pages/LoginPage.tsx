@@ -11,7 +11,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export function LoginPage() {
-  const { status } = useAuth();
+  const { status, session } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -20,10 +20,11 @@ export function LoginPage() {
   const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? "Sign-in failed.") : null;
 
   useEffect(() => {
-    if (status === "authenticated") {
-      void navigate(returnTo, { replace: true });
+    if (status === "authenticated" && session?.tenant) {
+      const target = returnTo === "/" ? `/${session.tenant.slug}/` : returnTo;
+      void navigate(target, { replace: true });
     }
-  }, [status, navigate, returnTo]);
+  }, [status, session, navigate, returnTo]);
 
   const { buttonRef, error: gisError } = useGoogleSignIn(returnTo);
 

@@ -12,6 +12,14 @@ export class SyncStore {
     makeAutoObservable(this, { users: false });
   }
 
+  reset(): void {
+    runInAction(() => {
+      this.users.clear();
+      this.cursor = "";
+      this.status = "idle";
+    });
+  }
+
   loadSnapshots(snapshots: AggregateSnapshot[], cursor: string): void {
     runInAction(() => {
       this.users.clear();

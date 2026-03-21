@@ -7,12 +7,13 @@ export function createUserRouter(pool: Pool, kms: KeyManagementService): Router 
   const router = Router();
 
   router.get("/me/events", async (req, res) => {
-    if (!req.session) {
+    if (!req.session || !req.tenantContext) {
       res.status(401).json({ error: "not_authenticated" });
       return;
     }
 
-    const { principalId, tenantId } = req.session;
+    const { principalId } = req.session;
+    const { tenantId } = req.tenantContext;
 
     const rawAfterVersion = req.query.afterVersion;
     const afterVersion =

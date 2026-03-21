@@ -7,10 +7,16 @@ export interface SessionContext {
   expiresAt: Date;
 }
 
+export interface TenantContext {
+  tenantId: string;
+  role: string;
+}
+
 declare global {
   namespace Express {
     interface Request {
       session?: SessionContext;
+      tenantContext?: TenantContext;
       requestContext: RequestContext;
     }
   }
