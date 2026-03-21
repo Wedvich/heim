@@ -11,15 +11,5 @@ export type {
 } from "./events.ts";
 export type { UserCreatedPii } from "./forgettable-payloads.ts";
 export type { HydratedUserCreatedEvent, HydratedUserEvent } from "./hydrated-events.ts";
-export {
-  applyTenantEvent,
-  buildTenantAggregate,
-  INITIAL_TENANT_STATE,
-  type TenantState,
-} from "./tenant/index.ts";
-export {
-  applyUserEvent,
-  buildUserAggregate,
-  INITIAL_USER_STATE,
-  type UserState,
-} from "./user/index.ts";
+export { applyTenantEvent, INITIAL_TENANT_STATE, type TenantState } from "./tenant/index.ts";
+export { applyUserEvent, INITIAL_USER_STATE, type UserState } from "./user/index.ts";

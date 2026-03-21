@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { buildAggregate } from "../aggregate.ts";
 import type { TenantCreatedEvent } from "../events.ts";
-import { buildTenantAggregate } from "./tenant-aggregate.ts";
 import { applyTenantEvent } from "./tenant-fold.ts";
 import { INITIAL_TENANT_STATE } from "./tenant-state.ts";
 
@@ -41,9 +41,9 @@ describe("applyTenantEvent", () => {
   });
 });
 
-describe("buildTenantAggregate", () => {
+describe("buildAggregate (Tenant)", () => {
   it("returns initial state for empty event stream", () => {
-    const aggregate = buildTenantAggregate([]);
+    const aggregate = buildAggregate(INITIAL_TENANT_STATE, [], applyTenantEvent);
 
     expect(aggregate.state).toEqual(INITIAL_TENANT_STATE);
     expect(aggregate.version).toBe(0);
@@ -51,7 +51,7 @@ describe("buildTenantAggregate", () => {
 
   it("builds aggregate from events", () => {
     const event = makeTenantCreatedEvent();
-    const aggregate = buildTenantAggregate([event]);
+    const aggregate = buildAggregate(INITIAL_TENANT_STATE, [event], applyTenantEvent);
 
     expect(aggregate.state.tenantId).toBe("tenant-1");
     expect(aggregate.state.name).toBe("Acme");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { buildAggregate } from "../aggregate.ts";
 import type { HydratedUserCreatedEvent } from "../hydrated-events.ts";
-import { buildUserAggregate } from "./user-aggregate.ts";
 import { applyUserEvent } from "./user-fold.ts";
 import { INITIAL_USER_STATE } from "./user-state.ts";
 
@@ -75,9 +75,9 @@ describe("applyUserEvent", () => {
   });
 });
 
-describe("buildUserAggregate", () => {
+describe("buildAggregate (User)", () => {
   it("returns initial state for empty event stream", () => {
-    const aggregate = buildUserAggregate([]);
+    const aggregate = buildAggregate(INITIAL_USER_STATE, [], applyUserEvent);
 
     expect(aggregate.state).toEqual(INITIAL_USER_STATE);
     expect(aggregate.version).toBe(0);
@@ -85,7 +85,7 @@ describe("buildUserAggregate", () => {
 
   it("builds aggregate from events", () => {
     const event = makeUserCreatedEvent();
-    const aggregate = buildUserAggregate([event]);
+    const aggregate = buildAggregate(INITIAL_USER_STATE, [event], applyUserEvent);
 
     expect(aggregate.state.principalId).toBe("principal-1");
     expect(aggregate.state.displayName).toBe("Alice");
