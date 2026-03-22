@@ -36,10 +36,9 @@ export async function checkSlugAvailable(
   slug: string,
   inviteToken: string,
 ): Promise<SlugCheckResult> {
-  const res = await apiFetch(
-    `/api/tenants/slug-available?slug=${encodeURIComponent(slug)}`,
-    { headers: { Authorization: `Bearer ${inviteToken}` } },
-  );
+  const res = await apiFetch(`/api/tenants/slug-available?slug=${encodeURIComponent(slug)}`, {
+    headers: { Authorization: `Bearer ${inviteToken}` },
+  });
   if (!res.ok) throw new Error(`slug check failed: ${res.status}`);
   return res.json() as Promise<SlugCheckResult>;
 }
@@ -60,6 +59,16 @@ export async function completeRegistration(
     body: JSON.stringify({ tenantName, tenantSlug }),
   });
   return res.json() as Promise<RegistrationResult>;
+}
+
+export interface RegistrationContext {
+  suggestedTenantName: string | null;
+}
+
+export async function fetchRegistrationContext(): Promise<RegistrationContext> {
+  const res = await apiFetch("/api/auth/register/context");
+  if (!res.ok) return { suggestedTenantName: null };
+  return res.json() as Promise<RegistrationContext>;
 }
 
 export async function postLogout(): Promise<void> {

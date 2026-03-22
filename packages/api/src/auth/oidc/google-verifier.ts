@@ -41,6 +41,7 @@ export class GoogleOidcVerifier implements OidcProviderVerifier {
       email: payload.email,
       emailVerified: payload.email_verified ?? false,
       ...(payload.name !== undefined && { name: payload.name }),
+      ...(payload.family_name !== undefined && { familyName: payload.family_name }),
       ...(payload.picture !== undefined && { avatarUrl: payload.picture }),
     };
   }

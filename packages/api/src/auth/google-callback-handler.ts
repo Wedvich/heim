@@ -155,6 +155,7 @@ export function googleCallbackHandler(
               email: identity.email,
               emailVerified: identity.emailVerified,
               name: identity.name,
+              familyName: identity.familyName,
               avatarUrl: identity.avatarUrl,
               inviteToken: registerState.invite,
               issuedAt: Date.now(),

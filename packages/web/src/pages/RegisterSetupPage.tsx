@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/auth-context";
-import { checkSlugAvailable, completeRegistration, type SlugCheckResult } from "../auth/api";
+import {
+  checkSlugAvailable,
+  completeRegistration,
+  fetchRegistrationContext,
+  type SlugCheckResult,
+} from "../auth/api";
 
 function generateSlug(name: string): string {
   return name
@@ -67,6 +72,25 @@ export function RegisterSetupPage() {
     },
     [inviteToken],
   );
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    fetchRegistrationContext().then((ctx) => {
+      if (cancelled || !ctx.suggestedTenantName) return;
+      const suggested = ctx.suggestedTenantName;
+      setTenantName((prev) => {
+        if (prev) return prev;
+        const generated = generateSlug(suggested);
+        setSlug(generated);
+        validateSlug(generated);
+        return suggested;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken, validateSlug]);
 
   function handleNameChange(value: string) {
     setTenantName(value);

@@ -4,6 +4,7 @@ export interface VerifiedIdentity {
   readonly email: string;
   readonly emailVerified: boolean;
   readonly name?: string;
+  readonly familyName?: string;
   readonly avatarUrl?: string;
 }
 

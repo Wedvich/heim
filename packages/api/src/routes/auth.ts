@@ -8,7 +8,12 @@ import { getInviteInfo } from "../auth/invite-repository.ts";
 import { loginHandler } from "../auth/login-handler.ts";
 import { registerHandler, executeRegistrationWithIdentity } from "../auth/register-handler.ts";
 import { openRegistrationToken } from "../auth/registration-token.ts";
-import { COOKIE_NAME, cookieOptions, invalidateSession, parseCookie } from "../middleware/session.ts";
+import {
+  COOKIE_NAME,
+  cookieOptions,
+  invalidateSession,
+  parseCookie,
+} from "../middleware/session.ts";
 import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "../audit/audit-logger.ts";
 
 const REG_TOKEN_MAX_AGE_MS = 15 * 60 * 1000; // 15 minutes
@@ -59,6 +64,25 @@ export function createAuthRouter(
   router.post("/login", loginHandler(oidcRegistry, pool));
   router.post("/register", registerHandler(oidcRegistry, pool, emailHmacKey, kms));
 
+  router.get("/register/context", (req, res) => {
+    const cookieHeader = req.headers.cookie;
+    const regCookie = cookieHeader ? parseCookie(cookieHeader, REG_COOKIE_NAME) : undefined;
+
+    if (!regCookie) {
+      res.status(401).json({ suggestedTenantName: null });
+      return;
+    }
+
+    const payload = openRegistrationToken(regCookie, regTokenSecret, REG_TOKEN_MAX_AGE_MS);
+    if (!payload) {
+      res.clearCookie(REG_COOKIE_NAME);
+      res.status(401).json({ suggestedTenantName: null });
+      return;
+    }
+
+    res.json({ suggestedTenantName: payload.familyName ?? null });
+  });
+
   router.post("/register/complete", async (req, res) => {
     try {
       const cookieHeader = req.headers.cookie;
@@ -88,6 +112,7 @@ export function createAuthRouter(
         email: payload.email,
         emailVerified: payload.emailVerified,
         name: payload.name,
+        familyName: payload.familyName,
         avatarUrl: payload.avatarUrl,
       };
 

@@ -10,6 +10,7 @@ export interface RegistrationTokenPayload {
   readonly email: string;
   readonly emailVerified: boolean;
   readonly name?: string;
+  readonly familyName?: string;
   readonly avatarUrl?: string;
   readonly inviteToken: string;
   readonly issuedAt: number;
