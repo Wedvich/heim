@@ -12,8 +12,15 @@ import { createTenantsRouter } from "./routes/tenants.ts";
 import { createSyncRouter } from "./routes/sync.ts";
 import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
 import { GoogleOidcVerifier } from "./auth/oidc/google-verifier.ts";
-import { CommandHandlerRegistry, productTypeHandler, stockItemHandler } from "@heim/domain";
+import {
+  CommandHandlerRegistry,
+  productTypeHandler,
+  stockItemHandler,
+  tenantHandler,
+} from "@heim/domain";
 import { LocalKeyManagementService } from "./crypto/kms.ts";
+import { ProjectorRegistry } from "./event-store/projector-registry.ts";
+import { registerTenantProjectors } from "./projectors/tenant-projectors.ts";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 if (!googleClientId) {
@@ -58,7 +65,11 @@ const kms = new LocalKeyManagementService(masterEncryptionKey);
 
 const commandRegistry = new CommandHandlerRegistry()
   .register(productTypeHandler)
-  .register(stockItemHandler);
+  .register(stockItemHandler)
+  .register(tenantHandler);
+
+const projectorRegistry = new ProjectorRegistry();
+registerTenantProjectors(projectorRegistry);
 
 app.use(helmet({ hsts: false }));
 app.use(cors({ origin, credentials: true }));
@@ -74,7 +85,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey, kms, regTokenSecret));
 app.use("/api/tenants", createTenantsRouter());
-app.use("/api/sync", createSyncRouter(pool, kms, commandRegistry));
+app.use("/api/sync", createSyncRouter(pool, kms, commandRegistry, projectorRegistry));
 app.use(
   (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error(err, "Unhandled error");

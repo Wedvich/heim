@@ -10,6 +10,7 @@ import type { KeyManagementService } from "../crypto/kms.ts";
 import { appendEvents } from "../event-store/append-events.ts";
 import { loadStreamEvents } from "../event-store/load-stream-events.ts";
 import { loadTenantEvents, type HydratedTenantEvent } from "../event-store/load-tenant-events.ts";
+import type { ProjectorRegistry } from "../event-store/projector-registry.ts";
 
 interface AggregateSnapshot {
   streamId: string;
@@ -33,6 +34,7 @@ export function createSyncRouter(
   pool: Pool,
   kms: KeyManagementService,
   commandRegistry: CommandHandlerRegistry,
+  projectorRegistry: ProjectorRegistry,
 ): Router {
   const router = Router();
 
@@ -137,6 +139,7 @@ export function createSyncRouter(
       }
 
       await appendEvents(client, [...result.events]);
+      await projectorRegistry.apply(client, result.events);
       await client.query("COMMIT");
 
       res.json({ ok: true, events: result.events });

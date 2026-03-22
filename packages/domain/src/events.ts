@@ -61,4 +61,18 @@ export interface MemberRemovedEvent extends DomainEvent {
   readonly payload: MemberRemovedPayload;
 }
 
-export type TenantEvent = TenantCreatedEvent | MemberAddedEvent | MemberRemovedEvent;
+export interface TenantRenamedPayload extends Record<string, unknown> {
+  readonly newName: string;
+}
+
+export interface TenantRenamedEvent extends DomainEvent {
+  readonly eventType: "TenantRenamed";
+  readonly streamType: "Tenant";
+  readonly payload: TenantRenamedPayload;
+}
+
+export type TenantEvent =
+  | TenantCreatedEvent
+  | MemberAddedEvent
+  | MemberRemovedEvent
+  | TenantRenamedEvent;

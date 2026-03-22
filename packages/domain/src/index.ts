@@ -18,6 +18,8 @@ export type {
   TenantCreatedEvent,
   TenantCreatedPayload,
   TenantEvent,
+  TenantRenamedEvent,
+  TenantRenamedPayload,
   UserCreatedEvent,
   UserCreatedPayload,
   UserEvent,
@@ -63,6 +65,10 @@ export type {
 export {
   applyTenantEvent,
   INITIAL_TENANT_STATE,
+  tenantHandler,
+  type RenameTenantPayload,
+  type TenantCommand,
+  type TenantCommandPayload,
   type TenantMember,
   type TenantState,
 } from "./tenant/index.ts";

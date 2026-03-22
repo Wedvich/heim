@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildAggregate } from "../aggregate.ts";
-import type { MemberAddedEvent, MemberRemovedEvent, TenantCreatedEvent } from "../events.ts";
+import type {
+  MemberAddedEvent,
+  MemberRemovedEvent,
+  TenantCreatedEvent,
+  TenantRenamedEvent,
+} from "../events.ts";
 import { applyTenantEvent } from "./tenant-fold.ts";
 import { INITIAL_TENANT_STATE } from "./tenant-state.ts";
 
@@ -104,6 +109,26 @@ describe("applyTenantEvent", () => {
     state = applyTenantEvent(state, makeMemberRemovedEvent());
 
     expect(Object.keys(state.members)).toHaveLength(0);
+  });
+
+  it("applies TenantRenamed", () => {
+    const created = makeTenantCreatedEvent();
+    let state = applyTenantEvent(INITIAL_TENANT_STATE, created);
+
+    const renamed: TenantRenamedEvent = {
+      ...BASE_FIELDS,
+      id: "evt-4",
+      streamPosition: 4,
+      eventType: "TenantRenamed",
+      payload: { newName: "New Acme" },
+      actualTime: new Date("2026-01-15T11:00:00Z"),
+    };
+    state = applyTenantEvent(state, renamed);
+
+    expect(state.name).toBe("New Acme");
+    expect(state.slug).toBe("acme");
+    expect(state.tenantId).toBe("tenant-1");
+    expect(state.members).toEqual({});
   });
 });
 

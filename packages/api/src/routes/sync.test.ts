@@ -2,9 +2,16 @@ import { randomBytes } from "node:crypto";
 import express from "express";
 import supertest from "supertest";
 import { describe, expect, it, vi } from "vitest";
-import { CommandHandlerRegistry, productTypeHandler, stockItemHandler } from "@heim/domain";
+import {
+  CommandHandlerRegistry,
+  productTypeHandler,
+  stockItemHandler,
+  tenantHandler,
+} from "@heim/domain";
 import { LocalKeyManagementService } from "../crypto/kms.ts";
 import { encryptPayload } from "../crypto/payload-encryption.ts";
+import { ProjectorRegistry } from "../event-store/projector-registry.ts";
+import { registerTenantProjectors } from "../projectors/tenant-projectors.ts";
 import { makeClient, makePool } from "../test-helpers.ts";
 import type { SessionContext } from "../session-context.ts";
 import { createSyncRouter } from "./sync.ts";
@@ -20,7 +27,16 @@ const SESSION: SessionContext = {
 };
 
 function makeRegistry(): CommandHandlerRegistry {
-  return new CommandHandlerRegistry().register(productTypeHandler).register(stockItemHandler);
+  return new CommandHandlerRegistry()
+    .register(productTypeHandler)
+    .register(stockItemHandler)
+    .register(tenantHandler);
+}
+
+function makeProjectorRegistry(): ProjectorRegistry {
+  const registry = new ProjectorRegistry();
+  registerTenantProjectors(registry);
+  return registry;
 }
 
 function makeApp(sessionOverride: SessionContext | null, pool: ReturnType<typeof makePool>) {
@@ -30,7 +46,7 @@ function makeApp(sessionOverride: SessionContext | null, pool: ReturnType<typeof
     if (sessionOverride) req.session = sessionOverride;
     next();
   });
-  app.use("/api/sync", createSyncRouter(pool, kms, makeRegistry()));
+  app.use("/api/sync", createSyncRouter(pool, kms, makeRegistry(), makeProjectorRegistry()));
   return app;
 }
 
@@ -389,5 +405,65 @@ describe("POST /api/sync/commands", () => {
     expect(res.body.events[0].eventType).toBe("ProductTypeCreated");
     expect(res.body.events[0].streamId).toBe("pt-1");
     expect(res.body.events[0].payload).toEqual({ name: "Olive Oil", category: "pantry" });
+  });
+
+  it("runs projector co-write for RenameTenant", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const query = vi.mocked(client.query);
+
+    // BEGIN
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // loadStreamEvents — tenant already created
+    query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: "evt-1",
+          tenant_id: "tenant-1",
+          stream_id: "tenant-1",
+          stream_type: "Tenant",
+          stream_position: 1,
+          event_type: "TenantCreated",
+          correlation_id: "corr-0",
+          causation_id: "command:corr-0",
+          acting_principal_id: "principal-1",
+          effective_principal_id: null,
+          payload: { name: "Old Name", slug: "old-name", createdByPrincipalId: "principal-1" },
+          metadata: {},
+          actual_time: new Date("2026-01-15T10:00:00Z"),
+        },
+      ],
+    } as never);
+    // appendEvents INSERT (TenantRenamed)
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // projector UPDATE tenants SET name
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // COMMIT
+    query.mockResolvedValueOnce({ rows: [] } as never);
+
+    const app = makeApp(SESSION, pool);
+    const res = await supertest(app)
+      .post("/api/sync/commands")
+      .send(
+        makeCommandBody({
+          streamId: "tenant-1",
+          streamType: "Tenant",
+          type: "RenameTenant",
+          payload: { newName: "New Name" },
+          expectedVersion: 1,
+        }),
+      );
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.events).toHaveLength(1);
+    expect(res.body.events[0].eventType).toBe("TenantRenamed");
+    expect(res.body.events[0].payload).toEqual({ newName: "New Name" });
+
+    // Verify projector ran the UPDATE query
+    const calls = query.mock.calls.map(([sql]) => sql);
+    expect(calls.some((sql) => typeof sql === "string" && sql.includes("UPDATE tenants"))).toBe(
+      true,
+    );
   });
 });

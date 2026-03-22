@@ -27,5 +27,7 @@ export function applyTenantEvent(state: TenantState, event: TenantEvent): Tenant
       const { [event.payload.principalId]: _, ...rest } = state.members;
       return { ...state, members: rest };
     }
+    case "TenantRenamed":
+      return { ...state, name: event.payload.newName };
   }
 }
