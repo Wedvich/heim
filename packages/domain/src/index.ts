@@ -72,4 +72,11 @@ export {
   type TenantMember,
   type TenantState,
 } from "./tenant/index.ts";
+export {
+  registerSeedConverter,
+  snapshotsToSeedFile,
+  type SeedCommand,
+  type SeedFile,
+  type SnapshotToSeedOptions,
+} from "./seed.ts";
 export { applyUserEvent, INITIAL_USER_STATE, type UserState } from "./user/index.ts";

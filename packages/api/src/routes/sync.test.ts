@@ -7,6 +7,7 @@ import {
   productTypeHandler,
   stockItemHandler,
   tenantHandler,
+  type SeedFile,
 } from "@heim/domain";
 import { LocalKeyManagementService } from "../crypto/kms.ts";
 import { encryptPayload } from "../crypto/payload-encryption.ts";
@@ -465,5 +466,188 @@ describe("POST /api/sync/commands", () => {
     expect(calls.some((sql) => typeof sql === "string" && sql.includes("UPDATE tenants"))).toBe(
       true,
     );
+  });
+});
+
+describe("POST /api/sync/commands/batch", () => {
+  it("returns 401 when no session", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const app = makeApp(null, pool);
+
+    const body: SeedFile = {
+      version: 1,
+      commands: [
+        {
+          streamId: "pt-1",
+          streamType: "ProductType",
+          type: "CreateProductType",
+          payload: { name: "Oil" },
+        },
+      ],
+    };
+
+    const res = await supertest(app).post("/api/sync/commands/batch").send(body);
+
+    expect(res.status).toBe(401);
+    expect(res.body).toMatchObject({ error: "not_authenticated" });
+  });
+
+  it("returns 400 for empty commands array", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const app = makeApp(SESSION, pool);
+
+    const res = await supertest(app)
+      .post("/api/sync/commands/batch")
+      .send({ version: 1, commands: [] });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: "empty_commands" });
+  });
+
+  it("returns 400 for unsupported version", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const app = makeApp(SESSION, pool);
+
+    const res = await supertest(app)
+      .post("/api/sync/commands/batch")
+      .send({
+        version: 99,
+        commands: [
+          {
+            streamId: "pt-1",
+            streamType: "ProductType",
+            type: "CreateProductType",
+            payload: { name: "Oil" },
+          },
+        ],
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: "unsupported_version" });
+  });
+
+  it("returns 400 for unknown stream type", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const app = makeApp(SESSION, pool);
+
+    const res = await supertest(app)
+      .post("/api/sync/commands/batch")
+      .send({
+        version: 1,
+        commands: [{ streamId: "x-1", streamType: "UnknownType", type: "Create", payload: {} }],
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      error: "unknown_stream_type",
+      index: 0,
+      streamType: "UnknownType",
+    });
+  });
+
+  it("processes batch successfully with multiple commands", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const query = vi.mocked(client.query);
+
+    const app = makeApp(SESSION, pool);
+
+    const res = await supertest(app)
+      .post("/api/sync/commands/batch")
+      .send({
+        version: 1,
+        commands: [
+          {
+            streamId: "pt-1",
+            streamType: "ProductType",
+            type: "CreateProductType",
+            payload: { name: "Olive Oil", category: "pantry" },
+          },
+          {
+            streamId: "pt-2",
+            streamType: "ProductType",
+            type: "CreateProductType",
+            payload: { name: "Butter", category: "dairy" },
+          },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, imported: 2 });
+
+    // Verify transaction boundaries
+    const calls = query.mock.calls.map(([sql]) => {
+      const s = (sql as string).trim();
+      if (s === "BEGIN" || s === "COMMIT" || s === "ROLLBACK") return s;
+      if (s.startsWith("SELECT")) return "SELECT";
+      if (s.startsWith("INSERT")) return "INSERT";
+      return s;
+    });
+    expect(calls[0]).toBe("BEGIN");
+    expect(calls[calls.length - 1]).toBe("COMMIT");
+  });
+
+  it("rolls back entire batch when a command is rejected", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const query = vi.mocked(client.query);
+
+    // BEGIN
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // loadStreamEvents for first command — already has a ProductType
+    query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: "evt-existing",
+          tenant_id: "tenant-1",
+          stream_id: "pt-1",
+          stream_type: "ProductType",
+          stream_position: 1,
+          event_type: "ProductTypeCreated",
+          correlation_id: "corr-0",
+          causation_id: "command:corr-0",
+          acting_principal_id: "principal-1",
+          effective_principal_id: null,
+          payload: { name: "Existing", category: null },
+          metadata: {},
+          actual_time: new Date(),
+        },
+      ],
+    } as never);
+    // ROLLBACK
+    query.mockResolvedValueOnce({ rows: [] } as never);
+
+    const app = makeApp(SESSION, pool);
+
+    // CreateProductType on existing stream → rejected
+    const res = await supertest(app)
+      .post("/api/sync/commands/batch")
+      .send({
+        version: 1,
+        commands: [
+          {
+            streamId: "pt-1",
+            streamType: "ProductType",
+            type: "CreateProductType",
+            payload: { name: "Duplicate" },
+          },
+        ],
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body).toMatchObject({
+      error: "command_rejected",
+      index: 0,
+      reason: "Product type already exists",
+    });
+
+    // Verify ROLLBACK was called, not COMMIT
+    const calls = query.mock.calls.map(([sql]) => (sql as string).trim());
+    expect(calls).toContain("ROLLBACK");
+    expect(calls).not.toContain("COMMIT");
   });
 });
