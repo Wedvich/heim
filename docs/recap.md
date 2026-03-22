@@ -1,76 +1,91 @@
 # Session Recap
 
-## Latest: Sync Bootstrap, Register Page, and SyncStore Wiring
+## Latest: Tenant Aggregate, Multi-Step Registration, and Cleanup
+
+Nine commits covering the Tenant aggregate with membership events, multi-step registration with encrypted cookie, default tenant naming, aggregate registry consolidation, RLS fix, and dependency updates.
+
+### What changed
+
+**Domain — Tenant aggregate** (`packages/domain/`):
+
+| File                                | Change                                                                           |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| `domain/src/tenant/`                | New: `TenantState`, `tenantFold`, barrel export — full Tenant aggregate          |
+| `domain/src/events.ts`              | Added `TenantCreatedEvent`, `MemberAddedEvent`, `MemberRemovedEvent` event types |
+| `domain/src/aggregate-registry.ts`  | Registers Tenant aggregate alongside User                                        |
+| `domain/src/user/user-aggregate.ts` | Removed `buildUserAggregate` (consolidated into registry)                        |
+
+**API — Multi-step registration** (`packages/api/`):
+
+| File                                      | Change                                                                                                            |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `api/src/auth/register-handler.ts`        | Rewritten: two-step flow — step 1 verifies OIDC + stores state in encrypted cookie, step 2 completes registration |
+| `api/src/auth/registration-token.ts`      | New: encrypt/decrypt registration state into a short-lived cookie token                                           |
+| `api/src/auth/registration-token.test.ts` | Tests for registration token                                                                                      |
+| `api/src/auth/register-handler.test.ts`   | Updated tests for new two-step flow                                                                               |
+| `api/src/auth/google-callback-handler.ts` | Updated to support registration callback variant                                                                  |
+| `api/src/routes/auth.ts`                  | Updated route wiring for two-step registration                                                                    |
+| `api/src/middleware/session.ts`           | New: session middleware helper                                                                                    |
+| `api/src/index.ts`                        | Updated startup wiring (REG_TOKEN_SECRET env var)                                                                 |
+
+**API — Cleanup:**
+
+| File                                           | Change                                           |
+| ---------------------------------------------- | ------------------------------------------------ |
+| `api/src/routes/user.ts`                       | Removed: obsolete `/api/user` route              |
+| `api/src/routes/user.test.ts`                  | Removed: associated tests                        |
+| `api/src/event-store/load-user-stream.ts`      | Removed: replaced by tenant-scoped event loading |
+| `api/src/event-store/load-user-stream.test.ts` | Removed: associated tests                        |
+
+**Web — Registration setup page** (`packages/web/`):
+
+| File                                  | Change                                                    |
+| ------------------------------------- | --------------------------------------------------------- |
+| `web/src/pages/RegisterSetupPage.tsx` | New: second step of registration — tenant name/slug input |
+| `web/src/pages/RegisterPage.tsx`      | Updated to redirect to setup step after OIDC verification |
+| `web/src/auth/api.ts`                 | Updated API wrappers for two-step registration            |
+| `web/src/auth/auth-context.tsx`       | Updated to handle registration flow state                 |
+| `web/src/App.tsx`                     | Added `/register/setup` route                             |
+| `web/src/sync/tenant-model.ts`        | New: MobX `TenantModel` for sync store                    |
+| `web/src/sync/tenant-model.test.ts`   | Tests for TenantModel                                     |
+
+**Infrastructure:**
+
+| File                      | Change                             |
+| ------------------------- | ---------------------------------- |
+| `packages/infra/init.sql` | Removed RLS from `audit_log` table |
+
+**Docs updated in-session:** `database.md`, `security.md`, `testing-guide.md`, `plan.md`.
+
+**Dependencies:** bumped google-auth-library and 6 dev dependencies.
+
+### Test coverage
+
+135 tests across 25 test files, all passing. Typecheck and lint clean.
+
+### Next up
+
+- Define command types and command handler interface in `@heim/domain`
+- Implement first command handler and `POST /api/sync/commands` endpoint
+- Implement speculative state manager in `SyncStore`
+- Implement conflict detection (aggregate version mismatch)
+- ABAC policy engine with role-based initial policies
+
+---
+
+## Previous: Sync Bootstrap, Register Page, and SyncStore Wiring
 
 Five commits covering the sync bootstrap endpoint, register UI, SyncStore integration, and a Postgres volume fix.
 
 ### What changed
 
-**Sync bootstrap** (`packages/api/`, `packages/domain/`, `packages/web/`):
+- **Sync bootstrap:** `load-tenant-events.ts`, `GET /api/sync/bootstrap`, aggregate registry, `SyncStore` with observable maps, `fetchBootstrap` wrapper, React hook + `SyncBootstrap` component.
+- **SyncStore wiring:** Replaced `UserProvider` with `SyncBootstrap` in `main.tsx`, HomePage reads from SyncStore. Removed `user-context.tsx` and `user/api.ts`.
+- **Register page:** `RegisterPage.tsx` with Google Sign-In and invite token validation, `postRegister` wrapper, Google callback handler refactor, `create-invite.ts` CLI script.
+- **Infra:** Fixed Postgres 18 volume mount path in `compose.yml`.
+- **Decisions:** Added deferred decision on event stream consistency hardening.
 
-| File                                             | Change                                                                                          |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `api/src/event-store/load-tenant-events.ts`      | New: loads all events for a tenant, decrypts forgettable payloads, folds via aggregate registry |
-| `api/src/event-store/load-tenant-events.test.ts` | Tests for tenant event loading                                                                  |
-| `api/src/routes/sync.ts`                         | New: `GET /api/sync/bootstrap` — returns folded aggregate states + cursor                       |
-| `api/src/routes/sync.test.ts`                    | Tests for bootstrap endpoint                                                                    |
-| `domain/src/aggregate-registry.ts`               | New: registry mapping stream prefixes to aggregate builders                                     |
-| `domain/src/index.ts`                            | Re-exports aggregate registry                                                                   |
-| `web/src/sync/sync-store.ts`                     | New: MobX `SyncStore` — observable maps for users, bootstraps from API                          |
-| `web/src/sync/sync-store.test.ts`                | Tests for SyncStore                                                                             |
-| `web/src/sync/api.ts`                            | New: `fetchBootstrap` typed fetch wrapper                                                       |
-| `web/src/sync/use-sync-bootstrap.ts`             | New: React hook to trigger bootstrap on mount                                                   |
-| `web/src/sync/SyncBootstrap.tsx`                 | New: component that bootstraps SyncStore and renders children                                   |
-
-**SyncStore wiring** (`packages/web/`):
-
-| File                            | Change                                                |
-| ------------------------------- | ----------------------------------------------------- |
-| `web/src/main.tsx`              | Replaced `UserProvider` with `SyncBootstrap`          |
-| `web/src/pages/HomePage.tsx`    | Reads user data from SyncStore instead of UserContext |
-| `web/src/user/user-context.tsx` | Removed (replaced by SyncStore)                       |
-| `web/src/user/api.ts`           | Removed (replaced by sync/api.ts)                     |
-
-**Register page** (`packages/api/`, `packages/web/`):
-
-| File                                      | Change                                                                 |
-| ----------------------------------------- | ---------------------------------------------------------------------- |
-| `web/src/pages/RegisterPage.tsx`          | New: registration page with Google Sign-In and invite token validation |
-| `web/src/App.tsx`                         | Added `/register` route                                                |
-| `web/src/auth/api.ts`                     | Added `postRegister` fetch wrapper                                     |
-| `web/src/hooks/use-google-sign-in.ts`     | Updated to support register callback variant                           |
-| `web/src/types/google-gis.d.ts`           | New: TypeScript declarations for Google Identity Services              |
-| `api/src/auth/google-callback-handler.ts` | Refactored to extract shared OIDC verification logic                   |
-| `api/src/auth/register-handler.ts`        | Refactored handler structure                                           |
-| `api/src/auth/invite-repository.ts`       | Updated invite lookup                                                  |
-| `api/src/routes/auth.ts`                  | Updated register route wiring                                          |
-| `scripts/create-invite.ts`                | New: CLI script to create invite tokens for testing                    |
-
-**Infrastructure fix:**
-
-| File                         | Change                              |
-| ---------------------------- | ----------------------------------- |
-| `packages/infra/compose.yml` | Fixed Postgres 18 volume mount path |
-
-**Decision log:**
-
-| File                | Change                                                      |
-| ------------------- | ----------------------------------------------------------- |
-| `docs/decisions.md` | Added deferred decision: event stream consistency hardening |
-
-### Test coverage
-
-124 tests across 24 test files, all passing. Typecheck and lint clean.
-
-### Next up
-
-Co-write the remaining register-flow events (no PII encryption needed):
-
-- `IdentityLinkedToUser` — emitted for every registration (links provider identity to principal)
-- `TenantCreated` — emitted when a new tenant is created (create-tenant invite path)
-- `MemberAddedToTenant` — emitted when a membership is created (both join and create paths)
-
-Then: command infrastructure, speculative state manager, and conflict detection for the sync engine.
+124 tests across 24 test files.
 
 ---
 
