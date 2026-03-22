@@ -60,6 +60,11 @@ Summary of all architectural and technical decisions made during the initial pla
 **Decision:** Commands carry both `actingUserId` and `effectiveUserId`. ABAC evaluates against effective user. Acting user needs `can_impersonate` permission.
 **Rationale:** Enables testing as different users, debugging user-reported issues, and combined with temporal queries: "what did this user see at this time?"
 
+### 32. Causation Tracking Convention
+
+**Decision:** Events and commands carry `correlationId` (shared across an entire user action) and `causationId` (direct cause). The `causationId` uses a typed prefix: bare UUID for root actions, `command:<id>` for events produced by command handlers, `event:<id>` for commands triggered by sagas reacting to events.
+**Rationale:** causationId must be parseable and refer to a real entity — if there's a `command:` prefix, a command with that ID must exist. This enables reliable causal chain traversal for debugging, auditing, and future saga/process manager support. Bare UUIDs (no prefix) signal root actions where no prior command or event triggered the flow.
+
 ---
 
 ## Auth Decisions

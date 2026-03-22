@@ -2,6 +2,8 @@ import type { DomainEvent } from "./events.ts";
 
 export interface Command {
   readonly commandId: string;
+  readonly correlationId: string;
+  readonly causationId: string;
   readonly streamId: string;
   readonly streamType: string;
   readonly type: string;

@@ -12,6 +12,8 @@ function stubHandler(streamType: string, result: CommandResult): CommandHandler 
 function makeCommand(overrides?: Partial<Command>): Command {
   return {
     commandId: "cmd-1",
+    correlationId: "corr-1",
+    causationId: "corr-1",
     streamId: "stream-1",
     streamType: "TestAggregate",
     type: "DoSomething",

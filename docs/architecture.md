@@ -10,6 +10,28 @@ Heim follows a Command Query Responsibility Segregation pattern with Event Sourc
 
 **Key principle:** Events are the source of truth. All state is derived from events.
 
+## Causation Tracking
+
+Every event and command carries two tracing fields:
+
+- **correlationId** — shared by all events and commands originating from a single user action. Generated once at the entry point and propagated through the entire chain. Use this to find "everything that happened because of action X."
+- **causationId** — what directly caused this event or command. Three forms:
+  - **Bare UUID** (no prefix) — root action, not triggered by another event or command (e.g., registration flow, direct API call)
+  - **`command:<commandId>`** — event produced by a command handler
+  - **`event:<eventId>`** — command triggered by an event (saga/process manager reacting to a domain event)
+
+**Example causal chain (saga):**
+
+```
+User clicks "Create Shopping List"
+  → Command A  (correlationId: X, causationId: X)           ← root
+    → Event 1  (correlationId: X, causationId: command:A)    ← produced by Command A
+      → Command B  (correlationId: X, causationId: event:1)  ← saga reacts to Event 1
+        → Event 2  (correlationId: X, causationId: command:B) ← produced by Command B
+```
+
+All entries share the same `correlationId`. The `causationId` forms a directed graph from effect back to cause. The prefix is parseable: split on `:` to determine the type and look up the referenced entity.
+
 ## Bitemporal Data
 
 Every event carries two temporal dimensions:
