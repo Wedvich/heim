@@ -6,12 +6,14 @@ type Status = "loading" | "authenticated" | "unauthenticated";
 interface AuthState {
   status: Status;
   session: Session | null;
+  refresh: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState>({
   status: "loading",
   session: null,
+  refresh: async () => {},
   logout: async () => {},
 });
 
@@ -37,13 +39,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function logout() {
+  async function refresh(): Promise<void> {
+    const s = await fetchSession();
+    if (!mounted.current) return;
+    setSession(s);
+    setStatus(s ? "authenticated" : "unauthenticated");
+  }
+
+  async function logout(): Promise<void> {
     await postLogout();
     setSession(null);
     setStatus("unauthenticated");
   }
 
-  return <AuthContext value={{ status, session, logout }}>{children}</AuthContext>;
+  return <AuthContext value={{ status, session, refresh, logout }}>{children}</AuthContext>;
 }
 
 export function useAuth() {

@@ -20,7 +20,8 @@ export type AuditAction =
   | "auth.register.failure"
   | "auth.invite.check_failed"
   | "auth.invite.redeemed"
-  | "auth.provider.linked";
+  | "auth.provider.linked"
+  | "auth.register.google_verified";
 
 export interface AuditLogEntry {
   principalId: string;

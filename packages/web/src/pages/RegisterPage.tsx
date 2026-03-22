@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/auth-context";
-import { fetchInviteStatus } from "../auth/api";
+import { fetchInviteStatus, type InviteStatus } from "../auth/api";
 import { useGoogleSignIn } from "../hooks/use-google-sign-in";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -12,16 +12,18 @@ const ERROR_MESSAGES: Record<string, string> = {
   already_registered: "This account is already registered. Try signing in instead.",
   verification_failed: "Google sign-in verification failed. Please try again.",
   unknown_provider: "Unsupported sign-in provider.",
+  registration_expired: "Your registration session expired. Please sign in with Google again.",
   internal: "An unexpected error occurred. Please try again.",
 };
 
-type InviteStatus = "loading" | "valid" | "invalid";
+type PageStatus = "loading" | "ready" | "invalid";
 
 export function RegisterPage() {
   const { status } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [inviteStatus, setInviteStatus] = useState<InviteStatus>("loading");
+  const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
+  const [inviteInfo, setInviteInfo] = useState<InviteStatus | null>(null);
 
   const inviteCode = searchParams.get("invite");
   const errorCode = searchParams.get("error");
@@ -35,22 +37,29 @@ export function RegisterPage() {
 
   useEffect(() => {
     if (!inviteCode) {
-      setInviteStatus("invalid");
+      setPageStatus("invalid");
       return;
     }
 
     fetchInviteStatus(inviteCode)
-      .then((result) => setInviteStatus(result.valid ? "valid" : "invalid"))
-      .catch(() => setInviteStatus("invalid"));
+      .then((result) => {
+        if (result.valid) {
+          setInviteInfo(result);
+          setPageStatus("ready");
+        } else {
+          setPageStatus("invalid");
+        }
+      })
+      .catch(() => setPageStatus("invalid"));
   }, [inviteCode]);
 
   const { buttonRef, error: gisError } = useGoogleSignIn("/", {
     state: inviteCode ? JSON.stringify({ invite: inviteCode, returnTo: "/" }) : undefined,
   });
 
-  if (status === "loading" || inviteStatus === "loading") return <p>Loading…</p>;
+  if (status === "loading" || pageStatus === "loading") return <p>Loading…</p>;
 
-  if (!inviteCode || inviteStatus === "invalid") {
+  if (!inviteCode || pageStatus === "invalid") {
     return (
       <div
         style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 80 }}
@@ -68,6 +77,11 @@ export function RegisterPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 80 }}>
       <h1>Register for Heim</h1>
+      {inviteInfo?.type === "join" && inviteInfo.tenantName && (
+        <p style={{ color: "var(--color-muted)", marginTop: 8 }}>
+          You&apos;ve been invited to join <strong>{inviteInfo.tenantName}</strong>
+        </p>
+      )}
       <div ref={buttonRef} style={{ marginTop: 24, colorScheme: "light" }} />
       {(gisError ?? errorMessage) && (
         <p style={{ color: "var(--color-error)", marginTop: 16 }}>{gisError ?? errorMessage}</p>

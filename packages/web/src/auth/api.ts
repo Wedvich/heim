@@ -14,10 +14,52 @@ export async function fetchSession(): Promise<Session | null> {
   return res.json() as Promise<Session>;
 }
 
-export async function fetchInviteStatus(token: string): Promise<{ valid: boolean }> {
+export interface InviteStatus {
+  valid: boolean;
+  type: "join" | "create";
+  tenantName: string | null;
+}
+
+export async function fetchInviteStatus(token: string): Promise<InviteStatus> {
   const res = await apiFetch(`/api/auth/invite-status?token=${encodeURIComponent(token)}`);
   if (!res.ok) throw new Error(`invite status check failed: ${res.status}`);
-  return res.json() as Promise<{ valid: boolean }>;
+  return res.json() as Promise<InviteStatus>;
+}
+
+export interface SlugCheckResult {
+  available: boolean;
+  valid: boolean;
+  reason?: string;
+}
+
+export async function checkSlugAvailable(
+  slug: string,
+  inviteToken: string,
+): Promise<SlugCheckResult> {
+  const res = await apiFetch(
+    `/api/tenants/slug-available?slug=${encodeURIComponent(slug)}`,
+    { headers: { Authorization: `Bearer ${inviteToken}` } },
+  );
+  if (!res.ok) throw new Error(`slug check failed: ${res.status}`);
+  return res.json() as Promise<SlugCheckResult>;
+}
+
+export interface RegistrationResult {
+  principal?: { id: string };
+  tenant?: { id: string };
+  error?: string;
+}
+
+export async function completeRegistration(
+  tenantName: string,
+  tenantSlug: string,
+): Promise<RegistrationResult> {
+  const res = await apiFetch("/api/auth/register/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tenantName, tenantSlug }),
+  });
+  return res.json() as Promise<RegistrationResult>;
 }
 
 export async function postLogout(): Promise<void> {

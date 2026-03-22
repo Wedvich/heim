@@ -4,11 +4,16 @@ import type { OidcVerifierRegistry } from "./oidc/registry.ts";
 import type { KeyManagementService } from "../crypto/kms.ts";
 import { TokenVerificationError } from "./oidc/types.ts";
 import { findPrincipalByProviderIdentity } from "./identity-repository.ts";
+import { getInviteInfo } from "./invite-repository.ts";
 import { createSession } from "./session-service.ts";
-import { executeRegistration } from "./register-handler.ts";
+import { executeRegistrationWithIdentity } from "./register-handler.ts";
+import { sealRegistrationToken } from "./registration-token.ts";
 import { COOKIE_NAME, cookieOptions, parseCookie } from "../middleware/session.ts";
 import { SYSTEM_PRINCIPAL_ID, writeAuditLog } from "../audit/audit-logger.ts";
 import { validateReturnTo } from "./validate-return-to.ts";
+
+export const REG_COOKIE_NAME = "heim_reg";
+const REG_COOKIE_MAX_AGE_S = 15 * 60; // 15 minutes
 
 interface RegisterState {
   invite: string;
@@ -29,11 +34,28 @@ function parseRegisterState(raw: unknown): RegisterState | null {
   }
 }
 
+export function regCookieOptions(): {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "lax";
+  path: string;
+  maxAge: number;
+} {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: REG_COOKIE_MAX_AGE_S * 1000,
+  };
+}
+
 export function googleCallbackHandler(
   registry: OidcVerifierRegistry,
   db: Pool,
   emailHmacKey: string,
   kms: KeyManagementService,
+  regTokenSecret: Buffer,
 ): RequestHandler {
   return async (req, res) => {
     const registerState = parseRegisterState(req.body?.state);
@@ -74,30 +96,76 @@ export function googleCallbackHandler(
 
       if (isRegister) {
         // --- Registration flow ---
-        // TODO: accept tenantName/tenantSlug from registration form
-        const result = await executeRegistration(
-          registry,
-          db,
-          emailHmacKey,
-          kms,
-          {
-            provider: "google",
-            credential,
-            inviteToken: registerState.invite,
-            tenantName: "Dev Tenant",
-            tenantSlug: "dev-tenant",
-            userAgent: req.requestContext.userAgent,
-          },
-          req.log,
-        );
-
-        if (!result.ok) {
-          redirectError(result.error);
+        let identity;
+        try {
+          identity = await registry.verify("google", credential);
+        } catch (err) {
+          if (err instanceof TokenVerificationError) {
+            req.log.warn({ provider: "google", err }, "Token verification failed");
+            writeAuditLog(db, {
+              principalId: SYSTEM_PRINCIPAL_ID,
+              action: "auth.register.failure",
+              detail: { ...detail, reason: "token_verification_failed" },
+            });
+          }
+          redirectError("invalid_credential");
           return;
         }
 
-        res.cookie(COOKIE_NAME, result.sessionToken, cookieOptions());
-        res.redirect(returnTo);
+        // Check invite type to decide flow
+        const inviteInfo = await getInviteInfo(db, registerState.invite);
+        if (!inviteInfo.valid) {
+          redirectError("invalid_invite");
+          return;
+        }
+
+        writeAuditLog(db, {
+          principalId: SYSTEM_PRINCIPAL_ID,
+          action: "auth.register.google_verified",
+          detail,
+        });
+
+        if (inviteInfo.tenantId) {
+          // Join-tenant invite: complete registration immediately
+          const result = await executeRegistrationWithIdentity(
+            db,
+            emailHmacKey,
+            kms,
+            identity,
+            {
+              inviteToken: registerState.invite,
+              userAgent: req.requestContext.userAgent,
+            },
+            req.log,
+          );
+
+          if (!result.ok) {
+            redirectError(result.error);
+            return;
+          }
+
+          res.cookie(COOKIE_NAME, result.sessionToken, cookieOptions());
+          res.redirect(returnTo);
+        } else {
+          // Create-tenant invite: seal registration cookie, redirect to setup
+          const token = sealRegistrationToken(
+            {
+              provider: identity.provider,
+              providerSubjectId: identity.providerSubjectId,
+              email: identity.email,
+              emailVerified: identity.emailVerified,
+              name: identity.name,
+              avatarUrl: identity.avatarUrl,
+              inviteToken: registerState.invite,
+              issuedAt: Date.now(),
+            },
+            regTokenSecret,
+          );
+
+          res.cookie(REG_COOKIE_NAME, token, regCookieOptions());
+          const setupParams = new URLSearchParams({ invite: registerState.invite });
+          res.redirect(`/register/setup?${setupParams.toString()}`);
+        }
       } else {
         // --- Login flow ---
         let identity;
@@ -147,7 +215,7 @@ export function googleCallbackHandler(
           return;
         }
 
-        const token = await createSession(db, principal.principalId, membership.tenant_id);
+        const sessionToken = await createSession(db, principal.principalId, membership.tenant_id);
 
         writeAuditLog(db, {
           principalId: principal.principalId,
@@ -156,7 +224,7 @@ export function googleCallbackHandler(
           detail,
         });
 
-        res.cookie(COOKIE_NAME, token, cookieOptions());
+        res.cookie(COOKIE_NAME, sessionToken, cookieOptions());
         res.redirect(returnTo);
       }
     } catch (err) {

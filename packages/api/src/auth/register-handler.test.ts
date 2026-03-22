@@ -102,7 +102,8 @@ describe("registerHandler", () => {
 
   it("returns 400 for invalid invite", async () => {
     mockFindInvite.mockResolvedValue(null);
-    const handler = registerHandler(makeRegistry(), makePool(makeClient()), EMAIL_HMAC_KEY, kms);
+    const registry = makeRegistry(vi.fn().mockResolvedValue(validIdentity));
+    const handler = registerHandler(registry, makePool(makeClient()), EMAIL_HMAC_KEY, kms);
     const { res, status, json } = makeRes();
     await handler(
       makeReq({ provider: "google", credential: "tok", inviteToken: "bad" }),
@@ -388,8 +389,10 @@ describe("registerHandler", () => {
   });
 
   it("rolls back on unexpected error", async () => {
-    mockFindInvite.mockResolvedValue(validInvite);
-    const registry = makeRegistry(vi.fn().mockRejectedValue(new Error("unexpected")));
+    const registry = makeRegistry(vi.fn().mockResolvedValue(validIdentity));
+    mockFindInvite.mockImplementation(() => {
+      throw new Error("unexpected");
+    });
 
     const client = makeClient();
     const mockQuery = vi.mocked(client.query);
