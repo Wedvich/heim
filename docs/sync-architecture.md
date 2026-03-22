@@ -29,28 +29,35 @@ The frontend uses MobX for reactive state. Aggregate states are observable model
 A shared abstract `Model<TState, TEvent>` base class handles sync plumbing and the event application lifecycle. The model holds the fold result directly as an `@observable.ref` state — computed getters expose fields to MobX observers.
 
 ```typescript
-// Base — owns state, version, and event application
+// Base — owns state, version, confirmed baseline, and event application
 abstract class Model<TState, TEvent extends DomainEvent> {
   readonly streamId: string;
   readonly streamType: string;
   @observable.ref protected _state: TState; // ref — tracks replacement, not deep
-  version: number = 0; // not observable — internal sync bookkeeping
+  #version: number;              // private — internal sync bookkeeping
+  #confirmedState: TState;       // baseline for rollback/rederive
+  #confirmedVersion: number;
 
   // Subclass provides the pure fold from @heim/domain
   protected abstract fold(state: TState, event: TEvent): TState;
 
-  // Public read access for the sync engine (rollback, conflict comparison)
-  get state(): TState {
-    return this._state;
-  }
+  get state(): TState { return this._state; }
+  get version(): number { return this.#version; }
+  get confirmedVersion(): number { return this.#confirmedVersion; }
 
-  // Base class owns the full flow: fold → assign → version bump
+  // Apply a single event (speculative or authoritative)
   applyEvent(event: TEvent): void {
     runInAction(() => {
       this._state = this.fold(this._state, event);
-      this.version = event.streamPosition;
+      this.#version = event.streamPosition;
     });
   }
+
+  // Advance the confirmed baseline (after authoritative events arrive)
+  advanceConfirmed(events: readonly TEvent[]): void { ... }
+
+  // Reset to confirmed state, then replay speculative events
+  rederive(speculativeEvents: readonly TEvent[]): void { ... }
 }
 
 // Typed subclass — computed getters + domain fold + computeds/relations
@@ -82,6 +89,8 @@ class UserModel extends Model<UserState, HydratedUserEvent> {
 
 `@observable.ref` on `_state` tells MobX to track reference replacement, not deep property changes. When `applyEvent` assigns a new state object, all computed getters re-evaluate. MobX's computed caching ensures observers are only notified when their specific value actually changed — a component reading `email` won't re-render when only `displayName` changed.
 
+The model tracks two parallel state lines: **confirmed** (the last server-acknowledged state) and **current** (confirmed + speculative events). `advanceConfirmed` moves the baseline forward when authoritative events arrive. `rederive` resets to confirmed and replays remaining speculative events — used on both confirm and reject to keep the UI consistent.
+
 No `patch()` or `toState()` methods needed — the fold result is the state, and the model exposes it through computed getters.
 
 ### Fold/MobX boundary
@@ -94,13 +103,16 @@ The `SyncStore` holds typed observable maps per aggregate type, plus sync state:
 
 ```typescript
 class SyncStore {
-  users = observable.map<string, UserModel>();
-  memberships = observable.map<string, MembershipModel>();
-  // Future: inventoryItems, chores, etc.
+  readonly productTypes = observable.map<string, ProductTypeModel>();
+  readonly stockItems = observable.map<string, StockItemModel>();
+  readonly tenants = observable.map<string, TenantModel>();
+  readonly users = observable.map<string, UserModel>();
+  cursor = "";
+  status: "idle" | "loading" | "ready" | "error" = "idle";
 
-  @observable cursor: string = "";
-  pendingCommands = observable.array<Command>();
-  speculativeEvents = observable.map<string, DomainEvent[]>();
+  // Private — managed via dispatch/confirmCommand/rejectCommand
+  #pendingCommands: PendingCommand[];
+  #speculativeEvents: Map<string, DomainEvent[]>;
 }
 ```
 

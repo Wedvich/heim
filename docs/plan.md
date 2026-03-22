@@ -13,11 +13,11 @@
   - [x] `TenantCreated` — create-tenant invite path
   - [x] `MemberAdded` — both join and create paths (Tenant stream event)
 - [x] Define base aggregate class with apply/fold pattern
-- [ ] Define command types and command handler interface
+- [x] Define command types and command handler interface
 - [ ] Define repository interface
 - [x] Implement stream loading (load stream, load at point in time)
 - [ ] Write comprehensive tests: reload, ordering, bitemporal queries
-- [ ] Implement basic projection infrastructure (subscribe to stream, fold into read model)
+- [x] Implement basic projection infrastructure (ProjectorRegistry with transactional co-writes)
 - [ ] Add `compose.prod.yml` with nginx as production entry point (serve static bundle, proxy `/api` to Express)
 
 > **Dev vs. prod serving:** In local development, Vite's built-in `server.proxy` forwards `/api` requests to Express — no nginx needed. In production, nginx serves the static Vite bundle directly and reverse-proxies `/api` to the Express container. The production topology is defined in a separate `compose.prod.yml`.
@@ -49,13 +49,13 @@
 
 - [x] Design sync architecture ([docs/sync-architecture.md](sync-architecture.md))
 - [x] Implement MobX model layer foundation (`Model` base class, `UserModel` subclass)
-- [ ] Implement command type, handler interface, and handler registry in `@heim/domain`
-- [ ] Implement first command handler (e.g. `UserCommandHandler`)
-- [ ] Implement `POST /api/sync/commands` (registry dispatch, idempotency, event append)
+- [x] Implement command type, handler interface, and handler registry in `@heim/domain`
+- [x] Implement first command handlers (Tenant, ProductType, StockItem)
+- [x] Implement `POST /api/sync/commands` (registry dispatch, event append)
 - [x] Implement `GET /api/sync/bootstrap` (fold all tenant aggregates, return snapshots + cursor)
 - [x] Implement `SyncStore` with observable maps, pending commands, speculative events
-- [ ] Implement speculative state manager (apply commands locally via shared domain logic)
-- [ ] Implement confirmation and rollback (match by `commandId`, replace speculative with authoritative)
+- [x] Implement speculative state manager (apply commands locally via shared domain logic)
+- [x] Implement confirmation and rollback (match by `commandId`, replace speculative with authoritative)
 - [x] Wire up: replace `UserProvider` with `SyncStore` + `observer` components
 - [ ] Implement conflict detection (aggregate version mismatch)
 - [ ] Handle reconnection (sync queued commands on coming back online)
@@ -64,8 +64,15 @@
 - [ ] IndexedDB persistence (when offline support is prioritized)
 - [ ] SSE/WS push channel (when real-time multi-device sync is needed)
 
-### Phase 4: First Feature Bounded Context
+### Phase 4: First Feature Bounded Context — Household Inventory
 
-**Goal:** Implement the first actual user-facing feature (TBD — likely Household Inventory or Chore Tracking).
+**Goal:** Full CRUD for the household inventory vertical (ProductType + StockItem aggregates).
 
-_To be planned when Phase 3 is complete. The event store, auth, and sync engine should be solid by then._
+- [x] Define ProductType aggregate (events, fold, state, command handler)
+- [x] Define StockItem aggregate (events, fold, state, command handler)
+- [x] Frontend MobX models (ProductTypeModel, StockItemModel) with SyncStore integration
+- [x] Command execution infrastructure (frontend registry, executeCommand orchestrator, sendCommand API)
+- [ ] Build inventory management UI (product type list, stock item CRUD)
+- [ ] Implement idempotency check on `POST /api/sync/commands`
+- [ ] Implement conflict detection (aggregate version mismatch) on server
+- [ ] Add projectors for inventory read models

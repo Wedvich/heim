@@ -193,7 +193,6 @@ These were discussed but explicitly deferred:
      Neither is a correctness fix — the DB `UNIQUE (tenant_id, stream_id, stream_position)` constraint and `ORDER BY` are sufficient today. These are defense-in-depth measures.
 - **Notification delivery mechanism** — abstracted but not implemented. Design for extensibility (push, email, SMS per user preference).
 - **Background job system** — likely BullMQ or similar, but not needed until notification/scheduler features are built.
-- **Specific frontend state management** — to be decided when building the sync engine (Phase 3).
 - **jj (Jujutsu) as local Git interface** — appealing UX improvements over Git, but deferred to avoid friction with Claude Code which uses Git commands directly. Can adopt later as a local-only workflow change with no repo/CI impact.
 
 ---

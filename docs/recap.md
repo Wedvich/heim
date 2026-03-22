@@ -1,75 +1,92 @@
 # Session Recap
 
-## Latest: Tenant Aggregate, Multi-Step Registration, and Cleanup
+## Latest: Command Infrastructure, Inventory Vertical, and Optimistic Sync
 
-Nine commits covering the Tenant aggregate with membership events, multi-step registration with encrypted cookie, default tenant naming, aggregate registry consolidation, RLS fix, and dependency updates.
+Six commits delivering the full command handling pipeline, the household inventory bounded context, and end-to-end optimistic sync with speculative state management.
 
 ### What changed
 
-**Domain — Tenant aggregate** (`packages/domain/`):
+**Domain — Command infrastructure** (`packages/domain/src/`):
 
-| File                                | Change                                                                           |
-| ----------------------------------- | -------------------------------------------------------------------------------- |
-| `domain/src/tenant/`                | New: `TenantState`, `tenantFold`, barrel export — full Tenant aggregate          |
-| `domain/src/events.ts`              | Added `TenantCreatedEvent`, `MemberAddedEvent`, `MemberRemovedEvent` event types |
-| `domain/src/aggregate-registry.ts`  | Registers Tenant aggregate alongside User                                        |
-| `domain/src/user/user-aggregate.ts` | Removed `buildUserAggregate` (consolidated into registry)                        |
+| File               | Change                                                                                                                                                                                                                |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commands.ts`      | New: `Command`, `CommandResult`, `DecisionEvent`, `FollowUpIntent`, `CommandHandler`, `CommandHandlerRegistry` — full command pipeline with envelope stamping, follow-up wiring, and state folding between iterations |
+| `commands.test.ts` | 283-line test suite covering registry stamping, follow-ups, causation chains, error paths                                                                                                                             |
+| `events.ts`        | Added `TenantRenamedEvent`, causation tracking fields (`correlationId`, `causationId`) on `DomainEvent`                                                                                                               |
 
-**API — Multi-step registration** (`packages/api/`):
+**Domain — Causation tracking**:
 
-| File                                      | Change                                                                                                            |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `api/src/auth/register-handler.ts`        | Rewritten: two-step flow — step 1 verifies OIDC + stores state in encrypted cookie, step 2 completes registration |
-| `api/src/auth/registration-token.ts`      | New: encrypt/decrypt registration state into a short-lived cookie token                                           |
-| `api/src/auth/registration-token.test.ts` | Tests for registration token                                                                                      |
-| `api/src/auth/register-handler.test.ts`   | Updated tests for new two-step flow                                                                               |
-| `api/src/auth/google-callback-handler.ts` | Updated to support registration callback variant                                                                  |
-| `api/src/routes/auth.ts`                  | Updated route wiring for two-step registration                                                                    |
-| `api/src/middleware/session.ts`           | New: session middleware helper                                                                                    |
-| `api/src/index.ts`                        | Updated startup wiring (REG_TOKEN_SECRET env var)                                                                 |
+`causationId` now has a parseable convention: bare UUID for root actions, `command:<id>` for handler-produced events, `event:<id>` for saga-triggered commands. Registration flow updated to use bare `correlationId`.
 
-**API — Cleanup:**
+**Domain — Household inventory** (`packages/domain/src/inventory/`):
 
-| File                                           | Change                                           |
-| ---------------------------------------------- | ------------------------------------------------ |
-| `api/src/routes/user.ts`                       | Removed: obsolete `/api/user` route              |
-| `api/src/routes/user.test.ts`                  | Removed: associated tests                        |
-| `api/src/event-store/load-user-stream.ts`      | Removed: replaced by tenant-scoped event loading |
-| `api/src/event-store/load-user-stream.test.ts` | Removed: associated tests                        |
+| File                | Change                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------- |
+| `product-type-*.ts` | ProductType aggregate: events, fold, state, typed commands, handler                            |
+| `stock-item-*.ts`   | StockItem aggregate: events, fold, state, typed commands, handler (with auto-discard on empty) |
+| `index.ts`          | Barrel export registering both aggregates                                                      |
 
-**Web — Registration setup page** (`packages/web/`):
+**Domain — Tenant commands** (`packages/domain/src/tenant/`):
 
-| File                                  | Change                                                    |
-| ------------------------------------- | --------------------------------------------------------- |
-| `web/src/pages/RegisterSetupPage.tsx` | New: second step of registration — tenant name/slug input |
-| `web/src/pages/RegisterPage.tsx`      | Updated to redirect to setup step after OIDC verification |
-| `web/src/auth/api.ts`                 | Updated API wrappers for two-step registration            |
-| `web/src/auth/auth-context.tsx`       | Updated to handle registration flow state                 |
-| `web/src/App.tsx`                     | Added `/register/setup` route                             |
-| `web/src/sync/tenant-model.ts`        | New: MobX `TenantModel` for sync store                    |
-| `web/src/sync/tenant-model.test.ts`   | Tests for TenantModel                                     |
+| File                 | Change                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `tenant-commands.ts` | New: `RenameTenant` typed command payload                                               |
+| `tenant-handler.ts`  | New: tenant command handler with validation (non-empty, ≤100 chars, no-op on unchanged) |
+| `tenant-fold.ts`     | Added `TenantRenamed` event handling                                                    |
 
-**Infrastructure:**
+**API** (`packages/api/src/`):
 
-| File                      | Change                             |
-| ------------------------- | ---------------------------------- |
-| `packages/infra/init.sql` | Removed RLS from `audit_log` table |
+| File                                | Change                                                                                            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `event-store/load-stream-events.ts` | New: generic stream event loader                                                                  |
+| `event-store/projector-registry.ts` | New: `ProjectorRegistry` for transactional co-writes alongside event append                       |
+| `projectors/tenant-projectors.ts`   | New: TenantRenamed projector updates `tenants.name`                                               |
+| `routes/sync.ts`                    | Added `POST /api/sync/commands` — registry dispatch, stream loading, event append with projectors |
+| `index.ts`                          | Wired command handler registry and projector registry at startup                                  |
 
-**Docs updated in-session:** `database.md`, `security.md`, `testing-guide.md`, `plan.md`.
+**Web — Optimistic sync** (`packages/web/src/sync/`):
 
-**Dependencies:** bumped google-auth-library and 6 dev dependencies.
+| File                    | Change                                                                                               |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `api.ts`                | New: `sendCommand` API wrapper                                                                       |
+| `execute-command.ts`    | New: orchestrator — runs handler locally, dispatches to SyncStore, sends to server, confirms/rejects |
+| `command-registry.ts`   | New: frontend command registry sharing domain handlers                                               |
+| `sync-store.ts`         | Added `dispatch`, `confirmCommand`, `rejectCommand` — full speculative state lifecycle               |
+| `model.ts`              | Added `advanceConfirmed`, `rederive` — confirmed baseline tracking for rollback                      |
+| `product-type-model.ts` | New: MobX ProductTypeModel                                                                           |
+| `stock-item-model.ts`   | New: MobX StockItemModel                                                                             |
+
+**Web — Settings page**: `SettingsPage.tsx` now includes household rename via `executeCommand`.
+
+**Repo maintenance**: Turborepo upgrade, vitest/oxlint declared as per-package devDependencies to fix turbo boundary violations.
+
+**Docs updated in-session:** `architecture.md` (command handling, causation tracking sections), `decisions.md` (removed stale deferred item).
+
+### Design decisions
+
+- **DecisionEvent + FollowUpIntent pattern**: handlers return lightweight payloads; the registry stamps envelope fields and wires causation chains. Keeps handlers pure and testable.
+- **Typed command payloads**: each aggregate defines a discriminated union (e.g., `StockItemCommand`), handlers cast once at the boundary.
+- **Auto-discard on empty**: `ConsumeStockItem` and `CorrectStockItemLevel` emit `StockItemDiscarded` when quantity reaches zero — modeled as follow-up intents.
+- **ProjectorRegistry**: transactional co-writes ensure projections update atomically with event append.
 
 ### Test coverage
 
-135 tests across 25 test files, all passing. Typecheck and lint clean.
+215 tests across 34 test files, all passing. Typecheck and lint clean.
 
 ### Next up
 
-- Define command types and command handler interface in `@heim/domain`
-- Implement first command handler and `POST /api/sync/commands` endpoint
-- Implement speculative state manager in `SyncStore`
-- Implement conflict detection (aggregate version mismatch)
+- Build inventory management UI (product type list, stock item CRUD)
+- Implement idempotency check on `POST /api/sync/commands`
+- Implement conflict detection (aggregate version mismatch) on server
+- Handle reconnection (sync queued commands on coming back online)
 - ABAC policy engine with role-based initial policies
+- Add `compose.prod.yml` with nginx as production entry point
+
+---
+
+## Previous: Tenant Aggregate, Multi-Step Registration, and Cleanup
+
+Nine commits covering the Tenant aggregate with membership events, multi-step registration with encrypted cookie, default tenant naming, aggregate registry consolidation, RLS fix, and dependency updates. 135 tests across 25 test files.
 
 ---
 
