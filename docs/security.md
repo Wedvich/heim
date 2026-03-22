@@ -10,7 +10,7 @@ Compose) + supertest for HTTP assertions.
 
 ### Current posture
 
-- RLS on `events`, `forgettable_payloads`, `memberships`, `audit_log` via `SET LOCAL app.current_tenant_id`
+- RLS on `events`, `forgettable_payloads`, `memberships` via `SET LOCAL app.current_tenant_id`
 - `validateReturnTo()` blocks open redirects (only relative paths starting with `/`)
 - CSRF double-submit check on Google callback
 - Session cookie: `httpOnly`, `secure` (prod), `sameSite: lax`
@@ -35,7 +35,7 @@ tests/access-control/
 │   - SET LOCAL to tenant A, query events → only A's events returned
 │   - SET LOCAL to tenant B, query events → only B's events returned
 │   - Omit SET LOCAL, query events → 0 rows (verify RLS default-deny)
-│   - Same pattern for memberships, forgettable_payloads, audit_log
+│   - Same pattern for memberships, forgettable_payloads
 │
 └── cross-tenant-api.test.ts
     - Authenticate as user in tenant A
