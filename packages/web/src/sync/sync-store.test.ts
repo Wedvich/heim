@@ -156,6 +156,57 @@ describe("SyncStore", () => {
     expect(store.cursor).toBe("20");
   });
 
+  it("populates productTypes map from snapshots", () => {
+    const store = new SyncStore();
+    const snapshots: AggregateSnapshot[] = [
+      {
+        streamId: "pt-1",
+        streamType: "ProductType",
+        version: 1,
+        state: { productTypeId: "pt-1", name: "Olive Oil", category: "pantry", createdAt: null },
+      },
+    ];
+
+    store.loadSnapshots(snapshots, "10");
+
+    expect(store.productTypes.size).toBe(1);
+    const pt = store.productTypes.get("pt-1")!;
+    expect(pt.name).toBe("Olive Oil");
+    expect(pt.category).toBe("pantry");
+    expect(pt.version).toBe(1);
+  });
+
+  it("populates stockItems map from snapshots", () => {
+    const store = new SyncStore();
+    const snapshots: AggregateSnapshot[] = [
+      {
+        streamId: "si-1",
+        streamType: "StockItem",
+        version: 2,
+        state: {
+          stockItemId: "si-1",
+          productTypeId: "pt-1",
+          level: "opened",
+          exactCount: null,
+          expiryDate: "2026-06-01",
+          purchaseDate: "2026-03-01",
+          discarded: false,
+          createdAt: null,
+        },
+      },
+    ];
+
+    store.loadSnapshots(snapshots, "10");
+
+    expect(store.stockItems.size).toBe(1);
+    const si = store.stockItems.get("si-1")!;
+    expect(si.productTypeId).toBe("pt-1");
+    expect(si.level).toBe("opened");
+    expect(si.expiryDate).toBe("2026-06-01");
+    expect(si.discarded).toBe(false);
+    expect(si.version).toBe(2);
+  });
+
   it("is observable — MobX reacts to loadSnapshots", () => {
     const store = new SyncStore();
     const observed: string[] = [];

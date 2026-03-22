@@ -12,6 +12,7 @@ import { createTenantsRouter } from "./routes/tenants.ts";
 import { createSyncRouter } from "./routes/sync.ts";
 import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
 import { GoogleOidcVerifier } from "./auth/oidc/google-verifier.ts";
+import { CommandHandlerRegistry, productTypeHandler, stockItemHandler } from "@heim/domain";
 import { LocalKeyManagementService } from "./crypto/kms.ts";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -55,6 +56,10 @@ oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
 const kms = new LocalKeyManagementService(masterEncryptionKey);
 
+const commandRegistry = new CommandHandlerRegistry()
+  .register(productTypeHandler)
+  .register(stockItemHandler);
+
 app.use(helmet({ hsts: false }));
 app.use(cors({ origin, credentials: true }));
 app.use(express.json());
@@ -69,7 +74,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey, kms, regTokenSecret));
 app.use("/api/tenants", createTenantsRouter());
-app.use("/api/sync", createSyncRouter(pool, kms));
+app.use("/api/sync", createSyncRouter(pool, kms, commandRegistry));
 app.use(
   (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error(err, "Unhandled error");

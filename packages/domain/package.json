@@ -12,7 +12,11 @@
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit"
   },
+  "dependencies": {
+    "uuid": "^13.0.0"
+  },
   "devDependencies": {
+    "@types/uuid": "^11.0.0",
     "vitest": "^4.1.0"
   }
 }

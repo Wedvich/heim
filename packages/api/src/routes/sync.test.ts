@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import express from "express";
 import supertest from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { CommandHandlerRegistry, productTypeHandler, stockItemHandler } from "@heim/domain";
 import { LocalKeyManagementService } from "../crypto/kms.ts";
 import { encryptPayload } from "../crypto/payload-encryption.ts";
 import { makeClient, makePool } from "../test-helpers.ts";
@@ -18,13 +19,18 @@ const SESSION: SessionContext = {
   expiresAt: new Date(Date.now() + 3600_000),
 };
 
+function makeRegistry(): CommandHandlerRegistry {
+  return new CommandHandlerRegistry().register(productTypeHandler).register(stockItemHandler);
+}
+
 function makeApp(sessionOverride: SessionContext | null, pool: ReturnType<typeof makePool>) {
   const app = express();
+  app.use(express.json());
   app.use((req, _res, next) => {
     if (sessionOverride) req.session = sessionOverride;
     next();
   });
-  app.use("/api/sync", createSyncRouter(pool, kms));
+  app.use("/api/sync", createSyncRouter(pool, kms, makeRegistry()));
   return app;
 }
 
@@ -236,5 +242,152 @@ describe("GET /api/sync/bootstrap", () => {
     expect(res.status).toBe(200);
     expect(res.body.snapshots).toEqual([]);
     expect(res.body.cursor).toBe("100");
+  });
+});
+
+function makeCommandBody(overrides?: Partial<Record<string, unknown>>) {
+  return {
+    commandId: "cmd-1",
+    correlationId: "corr-1",
+    causationId: "corr-1",
+    streamId: "pt-1",
+    streamType: "ProductType",
+    type: "CreateProductType",
+    payload: { name: "Olive Oil", category: "pantry" },
+    expectedVersion: 0,
+    ...overrides,
+  };
+}
+
+describe("POST /api/sync/commands", () => {
+  it("returns 401 when no session", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const app = makeApp(null, pool);
+
+    const res = await supertest(app).post("/api/sync/commands").send(makeCommandBody());
+
+    expect(res.status).toBe(401);
+    expect(res.body).toMatchObject({ error: "not_authenticated" });
+  });
+
+  it("returns 400 for unknown stream type", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const app = makeApp(SESSION, pool);
+
+    const res = await supertest(app)
+      .post("/api/sync/commands")
+      .send(makeCommandBody({ streamType: "Unknown" }));
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: "unknown_stream_type" });
+  });
+
+  it("returns 409 on version conflict", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const query = vi.mocked(client.query);
+
+    // BEGIN
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // loadStreamEvents — stream already has one event
+    query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: "evt-existing",
+          tenant_id: "tenant-1",
+          stream_id: "pt-1",
+          stream_type: "ProductType",
+          stream_position: 1,
+          event_type: "ProductTypeCreated",
+          correlation_id: "corr-0",
+          causation_id: "corr-0",
+          acting_principal_id: "principal-1",
+          effective_principal_id: null,
+          payload: { name: "Old", category: null },
+          metadata: {},
+          actual_time: new Date(),
+        },
+      ],
+    } as never);
+    // ROLLBACK
+    query.mockResolvedValueOnce({ rows: [] } as never);
+
+    const app = makeApp(SESSION, pool);
+    const res = await supertest(app)
+      .post("/api/sync/commands")
+      .send(makeCommandBody({ expectedVersion: 0 }));
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ error: "version_conflict", expected: 0, actual: 1 });
+  });
+
+  it("returns 422 when command is rejected", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const query = vi.mocked(client.query);
+
+    // BEGIN
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // loadStreamEvents — stream has one event (ProductType exists)
+    query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: "evt-existing",
+          tenant_id: "tenant-1",
+          stream_id: "pt-1",
+          stream_type: "ProductType",
+          stream_position: 1,
+          event_type: "ProductTypeCreated",
+          correlation_id: "corr-0",
+          causation_id: "corr-0",
+          acting_principal_id: "principal-1",
+          effective_principal_id: null,
+          payload: { name: "Old", category: null },
+          metadata: {},
+          actual_time: new Date(),
+        },
+      ],
+    } as never);
+    // ROLLBACK
+    query.mockResolvedValueOnce({ rows: [] } as never);
+
+    const app = makeApp(SESSION, pool);
+    // Try to create again with correct version — handler rejects duplicate
+    const res = await supertest(app)
+      .post("/api/sync/commands")
+      .send(makeCommandBody({ expectedVersion: 1 }));
+
+    expect(res.status).toBe(422);
+    expect(res.body).toMatchObject({
+      error: "command_rejected",
+      reason: "Product type already exists",
+    });
+  });
+
+  it("returns 200 with events on success", async () => {
+    const client = makeClient();
+    const pool = makePool(client);
+    const query = vi.mocked(client.query);
+
+    // BEGIN
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // loadStreamEvents — empty stream
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // appendEvents INSERT
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    // COMMIT
+    query.mockResolvedValueOnce({ rows: [] } as never);
+
+    const app = makeApp(SESSION, pool);
+    const res = await supertest(app).post("/api/sync/commands").send(makeCommandBody());
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.events).toHaveLength(1);
+    expect(res.body.events[0].eventType).toBe("ProductTypeCreated");
+    expect(res.body.events[0].streamId).toBe("pt-1");
+    expect(res.body.events[0].payload).toEqual({ name: "Olive Oil", category: "pantry" });
   });
 });

@@ -1,7 +1,14 @@
 import { Router } from "express";
 import type { Pool } from "pg";
-import { AGGREGATE_REGISTRY, buildAggregate } from "@heim/domain";
+import {
+  AGGREGATE_REGISTRY,
+  buildAggregate,
+  type Command,
+  type CommandHandlerRegistry,
+} from "@heim/domain";
 import type { KeyManagementService } from "../crypto/kms.ts";
+import { appendEvents } from "../event-store/append-events.ts";
+import { loadStreamEvents } from "../event-store/load-stream-events.ts";
 import { loadTenantEvents, type HydratedTenantEvent } from "../event-store/load-tenant-events.ts";
 
 interface AggregateSnapshot {
@@ -11,7 +18,22 @@ interface AggregateSnapshot {
   state: Record<string, unknown>;
 }
 
-export function createSyncRouter(pool: Pool, kms: KeyManagementService): Router {
+interface CommandRequestBody {
+  commandId: string;
+  correlationId: string;
+  causationId: string;
+  streamId: string;
+  streamType: string;
+  type: string;
+  payload: Record<string, unknown>;
+  expectedVersion: number;
+}
+
+export function createSyncRouter(
+  pool: Pool,
+  kms: KeyManagementService,
+  commandRegistry: CommandHandlerRegistry,
+): Router {
   const router = Router();
 
   router.get("/bootstrap", async (req, res) => {
@@ -58,6 +80,72 @@ export function createSyncRouter(pool: Pool, kms: KeyManagementService): Router 
     const cursor = events.length > 0 ? events[events.length - 1]!.globalPosition : "0";
 
     res.json({ snapshots, cursor });
+  });
+
+  router.post("/commands", async (req, res) => {
+    if (!req.session) {
+      res.status(401).json({ error: "not_authenticated" });
+      return;
+    }
+
+    const { tenantId, principalId } = req.session;
+    const body = req.body as CommandRequestBody;
+
+    const config = AGGREGATE_REGISTRY[body.streamType];
+    if (!config) {
+      res.status(400).json({ error: "unknown_stream_type" });
+      return;
+    }
+
+    const command: Command = {
+      commandId: body.commandId,
+      correlationId: body.correlationId,
+      causationId: body.causationId,
+      streamId: body.streamId,
+      streamType: body.streamType,
+      type: body.type,
+      payload: body.payload,
+      expectedVersion: body.expectedVersion,
+      actualTime: new Date(),
+      tenantId,
+      actingPrincipalId: principalId,
+      effectivePrincipalId: null,
+    };
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const streamEvents = await loadStreamEvents(client, tenantId, command.streamId);
+      const aggregate = buildAggregate(config.initial, streamEvents, config.apply);
+
+      if (aggregate.version !== command.expectedVersion) {
+        await client.query("ROLLBACK");
+        res.status(409).json({
+          error: "version_conflict",
+          expected: command.expectedVersion,
+          actual: aggregate.version,
+        });
+        return;
+      }
+
+      const result = commandRegistry.handle(aggregate.state, command, config);
+      if (!result.ok) {
+        await client.query("ROLLBACK");
+        res.status(422).json({ error: "command_rejected", reason: result.reason });
+        return;
+      }
+
+      await appendEvents(client, [...result.events]);
+      await client.query("COMMIT");
+
+      res.json({ ok: true, events: result.events });
+    } catch {
+      await client.query("ROLLBACK").catch(() => {});
+      res.status(500).json({ error: "internal_error" });
+    } finally {
+      client.release();
+    }
   });
 
   return router;
