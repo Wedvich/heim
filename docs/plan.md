@@ -9,10 +9,9 @@
 - [x] Implement event append (`appendEvents`) and forgettable payload storage
 - [x] Implement KMS abstraction + payload encryption (AES-256-GCM, MEK → DEK)
 - [x] Co-write first event: `UserCreated` with encrypted forgettable payload (PII)
-- [ ] Co-write remaining register-flow events (no PII encryption):
-  - [ ] `IdentityLinkedToUser` — every registration (links provider identity to principal)
-  - [ ] `TenantCreated` — create-tenant invite path
-  - [ ] `MemberAddedToTenant` — both join and create paths
+- [x] Co-write remaining register-flow events (no PII encryption):
+  - [x] `TenantCreated` — create-tenant invite path
+  - [x] `MemberAdded` — both join and create paths (Tenant stream event)
 - [x] Define base aggregate class with apply/fold pattern
 - [ ] Define command types and command handler interface
 - [ ] Define repository interface
@@ -34,8 +33,7 @@
 - [x] Build basic login UI in `@heim/web` (Google Sign-In, routing, auth context)
 - [x] Implement User aggregate in `@heim/domain`
 - [x] Serve hydrated user event stream (`GET /api/user/me/events`) and fold on client
-- [ ] Implement Identity, Tenant, Membership aggregates in `@heim/domain`
-- [ ] Implement commands: register, link identity, create tenant, add member, etc.
+- [x] Enrich Tenant aggregate with membership events (`MemberAdded`, `MemberRemoved`)
 - [ ] Implement ABAC policy engine with role-based initial policies
 - [ ] Implement Apple OIDC provider
 - [ ] Implement Microsoft OIDC provider

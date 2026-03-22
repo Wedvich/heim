@@ -1,4 +1,5 @@
 import type { CookieOptions, RequestHandler } from "express";
+import type { Pool } from "pg";
 import { pool } from "../db.ts";
 import type { SessionContext } from "../session-context.ts";
 
@@ -34,6 +35,27 @@ export const sessionCache = new Map<string, CacheEntry>();
 export async function invalidateSession(sessionId: string): Promise<void> {
   sessionCache.delete(sessionId);
   await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
+}
+
+// Intended for the future remove-member command handler. Deletes all sessions
+// for a principal within a tenant and evicts them from the in-memory cache.
+//
+// Full invalidation strategy (deferred until remove-member command exists):
+//   1. Immediate: call this function when MemberRemoved is appended.
+//   2. Lazy safety net: add a JOIN on memberships to the session query above,
+//      so even cached sessions are rejected within the 5-minute cache TTL.
+export async function invalidateSessionsForMember(
+  db: Pool,
+  principalId: string,
+  tenantId: string,
+): Promise<void> {
+  const result = await db.query<{ id: string }>(
+    `DELETE FROM sessions WHERE principal_id = $1 AND tenant_id = $2 RETURNING id`,
+    [principalId, tenantId],
+  );
+  for (const row of result.rows) {
+    sessionCache.delete(row.id);
+  }
 }
 
 export const sessionMiddleware: RequestHandler = async (req, res, next) => {

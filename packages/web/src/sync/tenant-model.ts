@@ -18,6 +18,7 @@ export class TenantModel extends Model<TenantState, TenantEvent> {
     makeObservable(this, {
       name: computed,
       slug: computed,
+      members: computed,
     });
   }
 
@@ -31,5 +32,9 @@ export class TenantModel extends Model<TenantState, TenantEvent> {
 
   get slug(): string | null {
     return this._state.slug;
+  }
+
+  get members(): TenantState["members"] {
+    return this._state.members;
   }
 }

@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from "uuid";
 import type { RequestHandler } from "express";
 import type { Pool } from "pg";
 import type { Logger } from "pino";
-import type { TenantCreatedEvent, UserCreatedEvent } from "@heim/domain";
+import type { MemberAddedEvent, TenantCreatedEvent, UserCreatedEvent } from "@heim/domain";
 import type { OidcVerifierRegistry } from "./oidc/registry.ts";
 import type { VerifiedIdentity } from "./oidc/types.ts";
 import { TokenVerificationError, UnknownProviderError } from "./oidc/types.ts";
@@ -132,6 +132,7 @@ export async function executeRegistrationWithIdentity(
     // 5. Tenant handling
     const correlationId = uuidv7();
     let tenantCreatedEvent: TenantCreatedEvent | null = null;
+    let memberAddedEvent: MemberAddedEvent | null = null;
     let tenantId: string;
     if (invite.tenantId) {
       // Join existing tenant
@@ -140,6 +141,27 @@ export async function executeRegistrationWithIdentity(
         `INSERT INTO memberships (principal_id, tenant_id, role) VALUES ($1, $2, $3)`,
         [principalId, tenantId, invite.role],
       );
+
+      const posResult = await client.query<{ next_pos: number }>(
+        `SELECT COALESCE(MAX(stream_position), 0) + 1 AS next_pos
+         FROM events WHERE tenant_id = $1 AND stream_id = $1 AND stream_type = 'Tenant'`,
+        [tenantId],
+      );
+      memberAddedEvent = {
+        id: uuidv7(),
+        tenantId,
+        streamId: tenantId,
+        streamType: "Tenant",
+        streamPosition: posResult.rows[0]!.next_pos,
+        eventType: "MemberAdded",
+        correlationId,
+        causationId: `command:${correlationId}`,
+        actingPrincipalId: principalId,
+        effectivePrincipalId: null,
+        payload: { principalId, role: invite.role },
+        metadata: {},
+        actualTime: new Date(),
+      };
     } else {
       // Create new tenant
       if (typeof tenantName !== "string" || !tenantName) {
@@ -189,6 +211,7 @@ export async function executeRegistrationWithIdentity(
         [principalId, tenantId, "owner"],
       );
 
+      const now = new Date();
       tenantCreatedEvent = {
         id: uuidv7(),
         tenantId,
@@ -206,7 +229,23 @@ export async function executeRegistrationWithIdentity(
           createdByPrincipalId: principalId,
         },
         metadata: {},
-        actualTime: new Date(),
+        actualTime: now,
+      };
+
+      memberAddedEvent = {
+        id: uuidv7(),
+        tenantId,
+        streamId: tenantId,
+        streamType: "Tenant",
+        streamPosition: 2,
+        eventType: "MemberAdded",
+        correlationId,
+        causationId: `command:${correlationId}`,
+        actingPrincipalId: principalId,
+        effectivePrincipalId: null,
+        payload: { principalId, role: "owner" },
+        metadata: {},
+        actualTime: now,
       };
     }
 
@@ -259,9 +298,11 @@ export async function executeRegistrationWithIdentity(
       actualTime: new Date(),
     };
 
-    const eventsToAppend = tenantCreatedEvent
-      ? [tenantCreatedEvent, userCreatedEvent]
-      : [userCreatedEvent];
+    const eventsToAppend = [
+      ...(tenantCreatedEvent ? [tenantCreatedEvent] : []),
+      ...(memberAddedEvent ? [memberAddedEvent] : []),
+      userCreatedEvent,
+    ];
     await appendEvents(client, eventsToAppend);
     await storeForgettablePayload(client, {
       eventId,

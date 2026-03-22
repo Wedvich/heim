@@ -11,5 +11,21 @@ export function applyTenantEvent(state: TenantState, event: TenantEvent): Tenant
         slug: event.payload.slug,
         createdAt: event.actualTime,
       };
+    case "MemberAdded": {
+      return {
+        ...state,
+        members: {
+          ...state.members,
+          [event.payload.principalId]: {
+            role: event.payload.role,
+            joinedAt: event.actualTime,
+          },
+        },
+      };
+    }
+    case "MemberRemoved": {
+      const { [event.payload.principalId]: _, ...rest } = state.members;
+      return { ...state, members: rest };
+    }
   }
 }

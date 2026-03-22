@@ -184,6 +184,10 @@ describe("registerHandler", () => {
     mockQuery.mockResolvedValueOnce({ rows: [] } as never);
     // principal insert
     mockQuery.mockResolvedValueOnce({ rows: [{ id: "new-principal" }] } as never);
+    // membership insert (from join path)
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    // MAX(stream_position) for MemberAdded
+    mockQuery.mockResolvedValueOnce({ rows: [{ next_pos: 2 }] } as never);
 
     const pool = makePool(client);
     const handler = registerHandler(registry, pool, EMAIL_HMAC_KEY, kms);
@@ -210,8 +214,15 @@ describe("registerHandler", () => {
         mekVersion: 1,
       }),
     );
-    // Join path: only UserCreated, no TenantCreated
+    // Join path: MemberAdded + UserCreated (no TenantCreated)
     expect(mockAppendEvents).toHaveBeenCalledWith(client, [
+      expect.objectContaining({
+        eventType: "MemberAdded",
+        streamType: "Tenant",
+        streamId: "tenant-id",
+        streamPosition: 2,
+        payload: { principalId: "new-principal", role: "member" },
+      }),
       expect.objectContaining({
         eventType: "UserCreated",
         streamType: "User",
@@ -294,20 +305,26 @@ describe("registerHandler", () => {
         }),
       }),
       expect.objectContaining({
+        eventType: "MemberAdded",
+        streamType: "Tenant",
+        streamId: "new-tenant",
+        streamPosition: 2,
+        payload: { principalId: "new-principal", role: "owner" },
+      }),
+      expect.objectContaining({
         eventType: "UserCreated",
         streamType: "User",
         streamId: "new-principal",
       }),
     ]);
 
-    // Both events share a correlationId
+    // All events share a correlationId
     const appendedEvents = mockAppendEvents.mock.calls[0]![1] as unknown[];
-    expect(appendedEvents).toHaveLength(2);
-    const [first, second] = appendedEvents as [
-      { correlationId: string },
-      { correlationId: string },
-    ];
-    expect(first.correlationId).toBe(second.correlationId);
+    expect(appendedEvents).toHaveLength(3);
+    const correlationIds = appendedEvents.map(
+      (e) => (e as { correlationId: string }).correlationId,
+    );
+    expect(new Set(correlationIds).size).toBe(1);
 
     expect(mockStoreForgettablePayload).toHaveBeenCalled();
   });
@@ -352,6 +369,10 @@ describe("registerHandler", () => {
     const client = makeClient();
     const mockQuery = vi.mocked(client.query);
     mockQuery.mockResolvedValueOnce({ rows: [] } as never); // BEGIN
+    // membership insert (from join path)
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    // MAX(stream_position) for MemberAdded
+    mockQuery.mockResolvedValueOnce({ rows: [{ next_pos: 2 }] } as never);
 
     const pool = makePool(client);
     const handler = registerHandler(registry, pool, EMAIL_HMAC_KEY, kms);
@@ -370,6 +391,11 @@ describe("registerHandler", () => {
     expect(mockCreateKey).not.toHaveBeenCalled();
 
     expect(mockAppendEvents).toHaveBeenCalledWith(client, [
+      expect.objectContaining({
+        eventType: "MemberAdded",
+        streamType: "Tenant",
+        payload: { principalId: "existing-principal", role: "member" },
+      }),
       expect.objectContaining({
         eventType: "UserCreated",
         payload: expect.objectContaining({ merged: true }),
