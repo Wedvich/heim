@@ -51,13 +51,13 @@ Status `'deleted'` is a logical delete. The row is preserved because it's FK-ref
 
 Links principals to tenants with a role.
 
-| Column         | Type                   | Notes               |
-| -------------- | ---------------------- | ------------------- |
-| `id`           | UUID PK                | `uuidv7()`          |
-| `principal_id` | UUID FK → `principals` | Required            |
-| `tenant_id`    | UUID FK → `tenants`    | Required            |
-| `role`         | text                   | Required            |
-| `created_at`   | timestamptz            |                     |
+| Column         | Type                   | Notes      |
+| -------------- | ---------------------- | ---------- |
+| `id`           | UUID PK                | `uuidv7()` |
+| `principal_id` | UUID FK → `principals` | Required   |
+| `tenant_id`    | UUID FK → `tenants`    | Required   |
+| `role`         | text                   | Required   |
+| `created_at`   | timestamptz            |            |
 
 `role` is application-validated by the ABAC policy engine, not a DB enum. Roles are a domain concern, not infrastructure.
 
@@ -199,11 +199,11 @@ The MEK and `EMAIL_HMAC_KEY` MUST be separate secrets with independent access co
 
 ### Required secrets
 
-| Secret                 | Format                 | Purpose                                                                                              |
-| ---------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------- |
-| `MASTER_ENCRYPTION_KEY`| 32 bytes, base64       | MEK — wraps per-principal DEKs for forgettable payload encryption. Must be backed by KMS in prod.    |
-| `EMAIL_HMAC_KEY`       | Arbitrary length       | HMAC-SHA256 key for email-hash-based identity correlation across providers.                           |
-| `REG_TOKEN_SECRET`     | 32 bytes, base64       | AES-256-GCM key for encrypting the short-lived registration cookie (`heim_reg`) during multi-step registration. Ephemeral-use only — protects PII (email, name, avatar) in transit between the Google auth callback and the registration completion endpoint. |
+| Secret                  | Format           | Purpose                                                                                                                                                                                                                                                       |
+| ----------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MASTER_ENCRYPTION_KEY` | 32 bytes, base64 | MEK — wraps per-principal DEKs for forgettable payload encryption. Must be backed by KMS in prod.                                                                                                                                                             |
+| `EMAIL_HMAC_KEY`        | Arbitrary length | HMAC-SHA256 key for email-hash-based identity correlation across providers.                                                                                                                                                                                   |
+| `REG_TOKEN_SECRET`      | 32 bytes, base64 | AES-256-GCM key for encrypting the short-lived registration cookie (`heim_reg`) during multi-step registration. Ephemeral-use only — protects PII (email, name, avatar) in transit between the Google auth callback and the registration completion endpoint. |
 
 All three MUST be independent. Rotation of one must not affect the others. In local development, random values generated at first start are acceptable. In production, use env vars sourced from a secrets manager.
 
@@ -256,7 +256,7 @@ Write volume is low — entries come from auth actions (login, logout, token ref
 
 ## Row-Level Security
 
-RLS is enabled on `events`, `forgettable_payloads`, `memberships`, and `audit_log`. Each request transaction sets `SET LOCAL app.current_tenant_id = '<uuid>'` before any queries. The policy predicate is:
+RLS is enabled on `events`, `forgettable_payloads`, and `memberships`. Each request transaction sets `SET LOCAL app.current_tenant_id = '<uuid>'` before any queries. The policy predicate is:
 
 ```sql
 USING (tenant_id = current_setting('app.current_tenant_id')::uuid)
@@ -264,7 +264,7 @@ USING (tenant_id = current_setting('app.current_tenant_id')::uuid)
 
 System-level operations (migrations, projection rebuilds, global replay) use a dedicated database role with `BYPASSRLS` privilege.
 
-The `principals`, `identities`, `forgettable_payload_keys`, and `sessions` tables are cross-tenant by design and do NOT have tenant-scoped RLS. Access control for these is application-layer only.
+The `principals`, `identities`, `forgettable_payload_keys`, `sessions`, and `audit_log` tables are cross-tenant by design and do NOT have tenant-scoped RLS. Access control for these is application-layer only.
 
 LIST partition pruning makes the RLS predicate essentially free — Postgres prunes to the correct partition first, then the RLS check is trivially true for every remaining row. RLS also acts as insurance against a future partitioning strategy change (e.g., migration to hash partitioning).
 

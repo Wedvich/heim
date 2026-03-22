@@ -180,8 +180,6 @@ CREATE INDEX idx_audit_log_action                 ON audit_log (action);
 ALTER TABLE events              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE forgettable_payloads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memberships         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_log           ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY tenant_isolation ON events
   USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
 
@@ -189,9 +187,6 @@ CREATE POLICY tenant_isolation ON forgettable_payloads
   USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
 
 CREATE POLICY tenant_isolation ON memberships
-  USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
-
-CREATE POLICY tenant_isolation ON audit_log
   USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
 
 --------------------------------------------------------------------------------
