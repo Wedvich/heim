@@ -15,7 +15,7 @@ function generateSlug(name: string): string {
 type SlugStatus = "idle" | "checking" | "available" | "unavailable" | "invalid";
 
 export function RegisterSetupPage() {
-  const { status } = useAuth();
+  const { status, refresh } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get("invite");
@@ -101,7 +101,7 @@ export function RegisterSetupPage() {
         }
         setError(errorMessage(result.error));
       } else {
-        void navigate("/", { replace: true });
+        await refresh();
       }
     } catch {
       setError("An unexpected error occurred. Please try again.");
@@ -112,7 +112,9 @@ export function RegisterSetupPage() {
 
   if (!inviteToken) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 80 }}>
+      <div
+        style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 80 }}
+      >
         <h1>Set Up Your Space</h1>
         <p style={{ color: "var(--color-error)", marginTop: 16 }}>
           An invite link is required to register.
