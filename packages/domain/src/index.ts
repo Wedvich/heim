@@ -1,5 +1,11 @@
 export { buildAggregate, type Aggregate, type ApplyFn } from "./aggregate.ts";
 export { AGGREGATE_REGISTRY, type AggregateConfig } from "./aggregate-registry.ts";
+export {
+  CommandHandlerRegistry,
+  type Command,
+  type CommandHandler,
+  type CommandResult,
+} from "./commands.ts";
 export type {
   DomainEvent,
   MemberAddedEvent,
