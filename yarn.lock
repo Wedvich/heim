@@ -310,18 +310,22 @@ __metadata:
     express: "npm:^5.1.0"
     google-auth-library: "npm:^10.6.2"
     helmet: "npm:^8.1.0"
+    oxlint: "npm:^1.56.0"
     pg: "npm:^8.20.0"
     pino: "npm:^10.3.1"
     pino-http: "npm:^11.0.0"
     pino-pretty: "npm:^13.0.0"
     supertest: "npm:^7.2.2"
     uuid: "npm:^13.0.0"
+    vitest: "npm:^4.1.0"
   languageName: unknown
   linkType: soft
 
 "@heim/domain@workspace:*, @heim/domain@workspace:packages/domain":
   version: 0.0.0-use.local
   resolution: "@heim/domain@workspace:packages/domain"
+  dependencies:
+    vitest: "npm:^4.1.0"
   languageName: unknown
   linkType: soft
 
@@ -334,6 +338,8 @@ __metadata:
 "@heim/logging@workspace:*, @heim/logging@workspace:packages/logging":
   version: 0.0.0-use.local
   resolution: "@heim/logging@workspace:packages/logging"
+  dependencies:
+    vitest: "npm:^4.1.0"
   languageName: unknown
   linkType: soft
 
@@ -352,6 +358,7 @@ __metadata:
     react-dom: "npm:^19.0.0"
     react-router: "npm:^7.13.1"
     vite: "npm:^8.0.0"
+    vitest: "npm:^4.1.0"
   languageName: unknown
   linkType: soft
 
