@@ -34,3 +34,10 @@ jobs:
 
       - name: Test
         run: yarn test --ui=stream
+
+      - name: Build
+        run: yarn build --ui=stream
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}

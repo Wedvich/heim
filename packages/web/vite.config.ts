@@ -1,10 +1,22 @@
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, "../..", ["CORS_", "GOOGLE_", "SENTRY_WEB_"]);
+  const env = loadEnv(mode, "../..", ["CORS_", "GOOGLE_", "SENTRY_"]);
   return {
-    plugins: [react()],
+    build: {
+      sourcemap: true,
+    },
+    plugins: [
+      react(),
+      sentryVitePlugin({
+        authToken: env["SENTRY_AUTH_TOKEN"],
+        org: env["SENTRY_ORG"],
+        project: env["SENTRY_PROJECT"],
+        telemetry: false,
+      }),
+    ],
     define: {
       "import.meta.env.CORS_ORIGIN": JSON.stringify(env["CORS_ORIGIN"] ?? ""),
       "import.meta.env.GOOGLE_CLIENT_ID": JSON.stringify(env["GOOGLE_CLIENT_ID"] ?? ""),

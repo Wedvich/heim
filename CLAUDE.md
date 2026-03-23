@@ -69,6 +69,7 @@ Filter to a specific package with `-F`:
 - [docs/auth.md](docs/auth.md)
 - [docs/database.md](docs/database.md)
 - [docs/decisions.md](docs/decisions.md)
+- [docs/observability.md](docs/observability.md)
 - [docs/overview.md](docs/overview.md)
 - [docs/plan.md](docs/plan.md)
 - [docs/recap.md](docs/recap.md)
