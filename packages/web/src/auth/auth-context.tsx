@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { setInstrumentationContext } from "../instrumentation";
 import { fetchSession, postLogout, type Session } from "./api";
 
 type Status = "loading" | "authenticated" | "unauthenticated";
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((s) => {
         if (!mounted.current) return;
         setSession(s);
+        setInstrumentationContext(s);
         setStatus(s ? "authenticated" : "unauthenticated");
       })
       .catch(() => {
@@ -43,12 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const s = await fetchSession();
     if (!mounted.current) return;
     setSession(s);
+    setInstrumentationContext(s);
     setStatus(s ? "authenticated" : "unauthenticated");
   }
 
   async function logout(): Promise<void> {
     await postLogout();
     setSession(null);
+    setInstrumentationContext(null);
     setStatus("unauthenticated");
   }
 
