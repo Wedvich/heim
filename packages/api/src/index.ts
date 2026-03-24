@@ -20,43 +20,22 @@ import {
   tenantHandler,
 } from "@heim/domain";
 import { LocalKeyManagementService } from "./crypto/kms.ts";
+import { requireEnv } from "./env.ts";
 import { ProjectorRegistry } from "./event-store/projector-registry.ts";
 import { registerTenantProjectors } from "./projectors/tenant-projectors.ts";
 
-const sentryDsn = process.env.SENTRY_API_DSN;
-if (!sentryDsn) {
-  throw new Error("SENTRY_API_DSN is required");
-}
+const googleClientId = requireEnv("GOOGLE_CLIENT_ID");
+const emailHmacKey = requireEnv("EMAIL_HMAC_KEY");
+const masterEncryptionKey = requireEnv("MASTER_ENCRYPTION_KEY");
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-if (!googleClientId) {
-  throw new Error("GOOGLE_CLIENT_ID is required");
-}
-
-const emailHmacKey = process.env.EMAIL_HMAC_KEY;
-if (!emailHmacKey) {
-  throw new Error("EMAIL_HMAC_KEY is required");
-}
-
-const masterEncryptionKey = process.env.MASTER_ENCRYPTION_KEY;
-if (!masterEncryptionKey) {
-  throw new Error("MASTER_ENCRYPTION_KEY is required");
-}
-
-const regTokenSecretBase64 = process.env.REG_TOKEN_SECRET;
-if (!regTokenSecretBase64) {
-  throw new Error("REG_TOKEN_SECRET is required");
-}
-const regTokenSecret = Buffer.from(regTokenSecretBase64, "base64");
+const regTokenSecret = Buffer.from(requireEnv("REG_TOKEN_SECRET"), "base64");
 if (regTokenSecret.length !== 32) {
   throw new Error("REG_TOKEN_SECRET must be 32 bytes (base64-encoded)");
 }
 
-const corsOrigin = process.env.CORS_ORIGIN;
-if (!corsOrigin) {
-  throw new Error("CORS_ORIGIN is required");
-}
-const origin = corsOrigin.split(",").map((o) => o.trim());
+const origin = requireEnv("CORS_ORIGIN")
+  .split(",")
+  .map((o) => o.trim());
 
 const app = express();
 app.set("etag", false);
