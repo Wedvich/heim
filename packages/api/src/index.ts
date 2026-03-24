@@ -24,7 +24,6 @@ import { requireEnv } from "./env.ts";
 import { ProjectorRegistry } from "./event-store/projector-registry.ts";
 import { registerTenantProjectors } from "./projectors/tenant-projectors.ts";
 
-requireEnv("SENTRY_API_DSN");
 const googleClientId = requireEnv("GOOGLE_CLIENT_ID");
 const emailHmacKey = requireEnv("EMAIL_HMAC_KEY");
 const masterEncryptionKey = requireEnv("MASTER_ENCRYPTION_KEY");
