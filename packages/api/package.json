@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.ts",
+    "dev": "node --import ./src/instrumentation.ts --watch src/index.ts",
     "lint": "oxlint .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
@@ -13,6 +13,7 @@
   "dependencies": {
     "@heim/domain": "workspace:*",
     "@heim/logging": "workspace:*",
+    "@sentry/node": "^10.45.0",
     "cors": "^2.8.6",
     "express": "^5.1.0",
     "google-auth-library": "^10.6.2",

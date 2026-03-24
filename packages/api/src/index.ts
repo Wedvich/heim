@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -21,6 +22,11 @@ import {
 import { LocalKeyManagementService } from "./crypto/kms.ts";
 import { ProjectorRegistry } from "./event-store/projector-registry.ts";
 import { registerTenantProjectors } from "./projectors/tenant-projectors.ts";
+
+const sentryDsn = process.env.SENTRY_API_DSN;
+if (!sentryDsn) {
+  throw new Error("SENTRY_API_DSN is required");
+}
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 if (!googleClientId) {
@@ -72,28 +78,44 @@ const projectorRegistry = new ProjectorRegistry();
 registerTenantProjectors(projectorRegistry);
 
 app.use(helmet({ hsts: false }));
-app.use(cors({ origin, credentials: true }));
+app.use(
+  cors({ allowedHeaders: ["Content-Type", "sentry-trace", "baggage"], credentials: true, origin }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(requestLogger);
 app.use(requestContextMiddleware);
 app.use(sessionMiddleware);
 
-app.get("/api/health", (_req, res) => {
+app.use(function sentryContextMiddleware(req, _res, next) {
+  if (req.session) {
+    Sentry.setUser({ id: req.session.principalId });
+    Sentry.setTag("tenant_id", req.session.tenantId);
+  }
+  next();
+});
+
+app.get("/api/health", function healthCheck(_req, res) {
   res.json({ status: "ok" });
 });
 
 app.use("/api/auth", createAuthRouter(oidcRegistry, emailHmacKey, kms, regTokenSecret));
 app.use("/api/tenants", createTenantsRouter());
 app.use("/api/sync", createSyncRouter(pool, kms, commandRegistry, projectorRegistry));
-app.use(
-  (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    logger.error(err, "Unhandled error");
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
-);
+
+Sentry.setupExpressErrorHandler(app);
+
+app.use(function unhandledErrorHandler(
+  err: unknown,
+  _req: express.Request,
+  res: express.Response,
+  _next: express.NextFunction,
+) {
+  logger.error(err, "Unhandled error");
+  if (!res.headersSent) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 const server = app.listen(port, () => {
   logger.info("API listening on port %d", port);
