@@ -72,7 +72,22 @@
 - [x] Define InventoryItem aggregate (events, fold, state, command handler)
 - [x] Frontend MobX models (ProductTypeModel, InventoryItemModel) with SyncStore integration
 - [x] Command execution infrastructure (frontend registry, executeCommand orchestrator, sendCommand API)
+- [x] Define Room aggregate (events, fold, state, command handler) with spot management
+- [x] Frontend RoomModel with SyncStore integration
+- [x] Build settings UI (tabbed Account + Household page with room/spot CRUD)
 - [ ] Build inventory management UI (product type list, inventory item CRUD)
 - [ ] Implement idempotency check on `POST /api/sync/commands`
 - [ ] Implement conflict detection (aggregate version mismatch) on server
 - [ ] Add projectors for inventory read models
+
+### Phase 5: Internationalization (i18n)
+
+**Goal:** The app supports multiple languages, starting with Norwegian (Bokmål) and English, with an extensible setup for adding more.
+
+- [ ] Choose and integrate an i18n library (e.g., `react-i18next` or lightweight alternative)
+- [ ] Define translation file structure and key conventions
+- [ ] Extract all user-facing strings from existing pages/components into translation keys
+- [ ] Add Norwegian (nb) and English (en) translation files
+- [ ] Add language switcher to Account settings tab
+- [ ] Persist language preference (localStorage or user aggregate when commands exist)
+- [ ] Ensure date/number formatting respects selected locale

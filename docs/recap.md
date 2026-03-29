@@ -1,86 +1,69 @@
 # Session Recap
 
-## Latest: Command Infrastructure, Inventory Vertical, and Optimistic Sync
+## Latest: Room Aggregate and Tabbed Settings UI
 
-Six commits delivering the full command handling pipeline, the household inventory bounded context, and end-to-end optimistic sync with speculative state management.
+Two commits adding the Room aggregate with spot management and a full settings interface.
 
 ### What changed
 
-**Domain — Command infrastructure** (`packages/domain/src/`):
+**Domain — Room aggregate** (`packages/domain/src/room/`):
 
-| File               | Change                                                                                                                                                                                                                |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `commands.ts`      | New: `Command`, `CommandResult`, `DecisionEvent`, `FollowUpIntent`, `CommandHandler`, `CommandHandlerRegistry` — full command pipeline with envelope stamping, follow-up wiring, and state folding between iterations |
-| `commands.test.ts` | 283-line test suite covering registry stamping, follow-ups, causation chains, error paths                                                                                                                             |
-| `events.ts`        | Added `TenantRenamedEvent`, causation tracking fields (`correlationId`, `causationId`) on `DomainEvent`                                                                                                               |
+| File                   | Change                                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `room-state.ts`        | `RoomState` with `roomId`, `name`, `spots` (Record of SpotState), `archived`, `createdAt`      |
+| `room-commands.ts`     | Commands: `CreateRoom`, `RenameRoom`, `ArchiveRoom`, `AddSpot`, `RenameSpot`, `RemoveSpot`     |
+| `room-events.ts`       | Events + `SPOT_KINDS` (`storage`, `fixture`, `appliance`) as const object with `SpotKind` type |
+| `room-handler.ts`      | Command handler with validation (name length, spot uniqueness, archived guard)                 |
+| `room-fold.ts`         | Pure reducer applying all room/spot events                                                     |
+| `room-handler.test.ts` | Comprehensive handler tests                                                                    |
+| `room-fold.test.ts`    | Fold/state transition tests                                                                    |
 
-**Domain — Causation tracking**:
+**Domain — Registry integration**: `aggregate-registry.ts` and `index.ts` updated to export Room types and register Room aggregate.
 
-`causationId` now has a parseable convention: bare UUID for root actions, `command:<id>` for handler-produced events, `event:<id>` for saga-triggered commands. Registration flow updated to use bare `correlationId`.
+**API**: `index.ts` registers `roomHandler` in the command handler registry; `sync.test.ts` updated for Room stream type.
 
-**Domain — Household inventory** (`packages/domain/src/inventory/`):
+**Web — Settings UI** (`packages/web/src/pages/`):
 
-| File                  | Change                                                                                             |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| `product-type-*.ts`   | ProductType aggregate: events, fold, state, typed commands, handler                                |
-| `inventory-item-*.ts` | InventoryItem aggregate: events, fold, state, typed commands, handler (with auto-discard on empty) |
-| `index.ts`            | Barrel export registering both aggregates                                                          |
+| File                        | Change                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `SettingsPage.tsx`          | Rewritten: tabbed container with Account + Household tabs, URL param `?tab=` for tab state |
+| `settings/AccountTab.tsx`   | Read-only user profile (avatar, name, email, role) + sign out button                       |
+| `settings/HouseholdTab.tsx` | Tenant rename form (migrated) + room list with inline "Add room" form                      |
+| `settings/RoomEditor.tsx`   | Expandable room row: inline rename, spot count, nested spot list                           |
+| `settings/SpotEditor.tsx`   | Spot row: inline rename on blur, kind label, remove button                                 |
+| `settings/AddSpotForm.tsx`  | Inline form: name input, kind select (storage/fixture/appliance), add button               |
 
-**Domain — Tenant commands** (`packages/domain/src/tenant/`):
+**Web — Sync**: `room-model.ts` (MobX model with computed `name`, `spots`, `archived`, `spotList`), `command-registry.ts` (registered `roomHandler`), `sync-store.ts` (added `rooms` observable map), `execute-command.ts` (added Room case to `getModel`).
 
-| File                 | Change                                                                                  |
-| -------------------- | --------------------------------------------------------------------------------------- |
-| `tenant-commands.ts` | New: `RenameTenant` typed command payload                                               |
-| `tenant-handler.ts`  | New: tenant command handler with validation (non-empty, ≤100 chars, no-op on unchanged) |
-| `tenant-fold.ts`     | Added `TenantRenamed` event handling                                                    |
-
-**API** (`packages/api/src/`):
-
-| File                                | Change                                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `event-store/load-stream-events.ts` | New: generic stream event loader                                                                  |
-| `event-store/projector-registry.ts` | New: `ProjectorRegistry` for transactional co-writes alongside event append                       |
-| `projectors/tenant-projectors.ts`   | New: TenantRenamed projector updates `tenants.name`                                               |
-| `routes/sync.ts`                    | Added `POST /api/sync/commands` — registry dispatch, stream loading, event append with projectors |
-| `index.ts`                          | Wired command handler registry and projector registry at startup                                  |
-
-**Web — Optimistic sync** (`packages/web/src/sync/`):
-
-| File                      | Change                                                                                               |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `api.ts`                  | New: `sendCommand` API wrapper                                                                       |
-| `execute-command.ts`      | New: orchestrator — runs handler locally, dispatches to SyncStore, sends to server, confirms/rejects |
-| `command-registry.ts`     | New: frontend command registry sharing domain handlers                                               |
-| `sync-store.ts`           | Added `dispatch`, `confirmCommand`, `rejectCommand` — full speculative state lifecycle               |
-| `model.ts`                | Added `advanceConfirmed`, `rederive` — confirmed baseline tracking for rollback                      |
-| `product-type-model.ts`   | New: MobX ProductTypeModel                                                                           |
-| `inventory-item-model.ts` | New: MobX InventoryItemModel                                                                         |
-
-**Web — Settings page**: `SettingsPage.tsx` now includes household rename via `executeCommand`.
-
-**Repo maintenance**: Turborepo upgrade, vitest/oxlint declared as per-package devDependencies to fix turbo boundary violations.
-
-**Docs updated in-session:** `architecture.md` (command handling, causation tracking sections), `decisions.md` (removed stale deferred item).
+**Dependencies**: Added `uuid` to `@heim/web` for UUIDv7 ID generation (rooms and spots).
 
 ### Design decisions
 
-- **DecisionEvent + FollowUpIntent pattern**: handlers return lightweight payloads; the registry stamps envelope fields and wires causation chains. Keeps handlers pure and testable.
-- **Typed command payloads**: each aggregate defines a discriminated union (e.g., `InventoryItemCommand`), handlers cast once at the boundary.
-- **Auto-discard on empty**: `ConsumeInventoryItem` and `CorrectInventoryItemLevel` emit `InventoryItemDiscarded` when quantity reaches zero — modeled as follow-up intents.
-- **ProjectorRegistry**: transactional co-writes ensure projections update atomically with event append.
+- **Tabbed settings over nested routes**: The page is lightweight enough for a single `/settings` route with `?tab=` search param for tab state (survives refresh, allows direct linking).
+- **Pre-register model for creation**: New rooms are created by adding a `RoomModel` with `INITIAL_ROOM_STATE` to `syncStore.rooms` before calling `executeCommand`, so `getModel()` finds it. On failure, the model is removed.
+- **UUIDv7 for spot/room IDs**: Time-ordered IDs benefit B-tree indexing when spotId is later used as a location reference in inventory items and other aggregates.
+- **Read-only Account tab**: No user update commands exist yet; the tab displays profile info and provides sign out. Ready for editing when domain commands are added.
+
+### Git config fix
+
+Found and removed a stray `[author] email = --get` section in `.git/config` that was overriding the correct `[user] email` for commit authorship.
 
 ### Test coverage
 
-215 tests across 34 test files, all passing. Typecheck and lint clean.
+252 tests across 36 test files, all passing. Typecheck and lint clean.
 
 ### Next up
 
-- Build inventory management UI (product type list, stock item CRUD)
+- Add internationalization (i18n) with Norwegian (Bokmål) and English, extensible for more languages
+- Build inventory management UI (product type list, inventory item CRUD)
 - Implement idempotency check on `POST /api/sync/commands`
 - Implement conflict detection (aggregate version mismatch) on server
-- Handle reconnection (sync queued commands on coming back online)
-- ABAC policy engine with role-based initial policies
-- Add `compose.prod.yml` with nginx as production entry point
+
+---
+
+## Previous: Command Infrastructure, Inventory Vertical, and Optimistic Sync
+
+Six commits delivering the full command handling pipeline, the household inventory bounded context, and end-to-end optimistic sync with speculative state management. 215 tests across 34 test files.
 
 ---
 
