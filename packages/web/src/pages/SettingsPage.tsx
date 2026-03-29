@@ -1,74 +1,52 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { observer } from "mobx-react-lite";
-import { useAuth } from "../auth/auth-context";
-import { executeCommand } from "../sync/execute-command";
-import { syncStore } from "../sync/sync-store";
+import { AccountTab } from "./settings/AccountTab";
+import { HouseholdTab } from "./settings/HouseholdTab";
+
+const TABS = [
+  { key: "account", label: "Account" },
+  { key: "household", label: "Household" },
+] as const;
+
+type TabKey = (typeof TABS)[number]["key"];
 
 export const SettingsPage = observer(function SettingsPage() {
-  const { session, refresh } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get("tab") as TabKey) ?? "account";
 
-  const tenantId = session?.tenant?.id;
-  const tenant = tenantId ? syncStore.tenants.get(tenantId) : undefined;
-
-  const [name, setName] = useState(tenant?.name ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const trimmed = name.trim();
-  const unchanged = trimmed === tenant?.name;
-  const canSave = trimmed.length > 0 && !unchanged && !saving;
-
-  async function handleSave(): Promise<void> {
-    if (!canSave || !tenantId || !session) return;
-
-    setSaving(true);
-    setError(null);
-
-    const result = await executeCommand({
-      streamId: tenantId,
-      streamType: "Tenant",
-      type: "RenameTenant",
-      payload: { newName: trimmed },
-      tenantId,
-      principalId: session.principal.id,
-    });
-
-    setSaving(false);
-
-    if (result.ok) {
-      await refresh();
-    } else {
-      setError(result.reason ?? result.error);
-    }
+  function selectTab(tab: TabKey): void {
+    setSearchParams(tab === "account" ? {} : { tab });
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 480 }}>
-      <h1>Settings</h1>
-      <Link to="/">← Back</Link>
+    <div style={{ padding: 32, maxWidth: 600 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+        <Link to="/">← Back</Link>
+        <h1 style={{ margin: 0 }}>Settings</h1>
+      </div>
 
-      <section style={{ marginTop: 24 }}>
-        <h2>Household name</h2>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={100}
-            disabled={saving}
-            style={{ flex: 1, padding: "8px 12px" }}
-          />
+      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--color-border)" }}>
+        {TABS.map(({ key, label }) => (
           <button
-            onClick={() => void handleSave()}
-            disabled={!canSave}
-            style={{ padding: "8px 16px", cursor: canSave ? "pointer" : "default" }}
+            key={key}
+            onClick={() => selectTab(key)}
+            style={{
+              padding: "8px 16px",
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              color: activeTab === key ? "var(--color-text)" : "var(--color-text-secondary)",
+              borderBottom:
+                activeTab === key ? "2px solid var(--color-text)" : "2px solid transparent",
+              fontWeight: activeTab === key ? 600 : 400,
+            }}
           >
-            {saving ? "Saving..." : "Save"}
+            {label}
           </button>
-        </div>
-        {error && <p style={{ color: "red", marginTop: 8 }}>{error}</p>}
-      </section>
+        ))}
+      </div>
+
+      {activeTab === "account" ? <AccountTab /> : <HouseholdTab />}
     </div>
   );
 });
