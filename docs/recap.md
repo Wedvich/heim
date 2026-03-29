@@ -20,11 +20,11 @@ Six commits delivering the full command handling pipeline, the household invento
 
 **Domain — Household inventory** (`packages/domain/src/inventory/`):
 
-| File                | Change                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------- |
-| `product-type-*.ts` | ProductType aggregate: events, fold, state, typed commands, handler                            |
-| `stock-item-*.ts`   | StockItem aggregate: events, fold, state, typed commands, handler (with auto-discard on empty) |
-| `index.ts`          | Barrel export registering both aggregates                                                      |
+| File                  | Change                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| `product-type-*.ts`   | ProductType aggregate: events, fold, state, typed commands, handler                                |
+| `inventory-item-*.ts` | InventoryItem aggregate: events, fold, state, typed commands, handler (with auto-discard on empty) |
+| `index.ts`            | Barrel export registering both aggregates                                                          |
 
 **Domain — Tenant commands** (`packages/domain/src/tenant/`):
 
@@ -46,15 +46,15 @@ Six commits delivering the full command handling pipeline, the household invento
 
 **Web — Optimistic sync** (`packages/web/src/sync/`):
 
-| File                    | Change                                                                                               |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `api.ts`                | New: `sendCommand` API wrapper                                                                       |
-| `execute-command.ts`    | New: orchestrator — runs handler locally, dispatches to SyncStore, sends to server, confirms/rejects |
-| `command-registry.ts`   | New: frontend command registry sharing domain handlers                                               |
-| `sync-store.ts`         | Added `dispatch`, `confirmCommand`, `rejectCommand` — full speculative state lifecycle               |
-| `model.ts`              | Added `advanceConfirmed`, `rederive` — confirmed baseline tracking for rollback                      |
-| `product-type-model.ts` | New: MobX ProductTypeModel                                                                           |
-| `stock-item-model.ts`   | New: MobX StockItemModel                                                                             |
+| File                      | Change                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `api.ts`                  | New: `sendCommand` API wrapper                                                                       |
+| `execute-command.ts`      | New: orchestrator — runs handler locally, dispatches to SyncStore, sends to server, confirms/rejects |
+| `command-registry.ts`     | New: frontend command registry sharing domain handlers                                               |
+| `sync-store.ts`           | Added `dispatch`, `confirmCommand`, `rejectCommand` — full speculative state lifecycle               |
+| `model.ts`                | Added `advanceConfirmed`, `rederive` — confirmed baseline tracking for rollback                      |
+| `product-type-model.ts`   | New: MobX ProductTypeModel                                                                           |
+| `inventory-item-model.ts` | New: MobX InventoryItemModel                                                                         |
 
 **Web — Settings page**: `SettingsPage.tsx` now includes household rename via `executeCommand`.
 
@@ -65,8 +65,8 @@ Six commits delivering the full command handling pipeline, the household invento
 ### Design decisions
 
 - **DecisionEvent + FollowUpIntent pattern**: handlers return lightweight payloads; the registry stamps envelope fields and wires causation chains. Keeps handlers pure and testable.
-- **Typed command payloads**: each aggregate defines a discriminated union (e.g., `StockItemCommand`), handlers cast once at the boundary.
-- **Auto-discard on empty**: `ConsumeStockItem` and `CorrectStockItemLevel` emit `StockItemDiscarded` when quantity reaches zero — modeled as follow-up intents.
+- **Typed command payloads**: each aggregate defines a discriminated union (e.g., `InventoryItemCommand`), handlers cast once at the boundary.
+- **Auto-discard on empty**: `ConsumeInventoryItem` and `CorrectInventoryItemLevel` emit `InventoryItemDiscarded` when quantity reaches zero — modeled as follow-up intents.
 - **ProjectorRegistry**: transactional co-writes ensure projections update atomically with event append.
 
 ### Test coverage

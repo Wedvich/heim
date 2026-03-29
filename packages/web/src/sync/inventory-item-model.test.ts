@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type {
-  StockItemAddedEvent,
-  StockItemConsumedEvent,
-  StockItemDiscardedEvent,
+  InventoryItemAddedEvent,
+  InventoryItemConsumedEvent,
+  InventoryItemDiscardedEvent,
 } from "@heim/domain";
-import { StockItemModel } from "./stock-item-model.ts";
+import { InventoryItemModel } from "./inventory-item-model.ts";
 
 const BASE_FIELDS = {
   tenantId: "tenant-1",
   streamId: "si-1",
-  streamType: "StockItem" as const,
+  streamType: "InventoryItem" as const,
   correlationId: "corr-1",
   causationId: "caus-1",
   actingPrincipalId: "principal-1",
@@ -17,12 +17,14 @@ const BASE_FIELDS = {
   metadata: {},
 };
 
-function makeStockItemAddedEvent(overrides?: Partial<StockItemAddedEvent>): StockItemAddedEvent {
+function makeInventoryItemAddedEvent(
+  overrides?: Partial<InventoryItemAddedEvent>,
+): InventoryItemAddedEvent {
   return {
     ...BASE_FIELDS,
     id: "evt-1",
     streamPosition: 1,
-    eventType: "StockItemAdded",
+    eventType: "InventoryItemAdded",
     payload: {
       productTypeId: "pt-1",
       level: "unopened",
@@ -34,40 +36,40 @@ function makeStockItemAddedEvent(overrides?: Partial<StockItemAddedEvent>): Stoc
   };
 }
 
-function makeStockItemConsumedEvent(
-  overrides?: Partial<StockItemConsumedEvent>,
-): StockItemConsumedEvent {
+function makeInventoryItemConsumedEvent(
+  overrides?: Partial<InventoryItemConsumedEvent>,
+): InventoryItemConsumedEvent {
   return {
     ...BASE_FIELDS,
     id: "evt-2",
     streamPosition: 2,
-    eventType: "StockItemConsumed",
+    eventType: "InventoryItemConsumed",
     payload: { level: "opened", exactCount: null },
     actualTime: new Date("2026-03-02T10:00:00Z"),
     ...overrides,
   };
 }
 
-function makeStockItemDiscardedEvent(
-  overrides?: Partial<StockItemDiscardedEvent>,
-): StockItemDiscardedEvent {
+function makeInventoryItemDiscardedEvent(
+  overrides?: Partial<InventoryItemDiscardedEvent>,
+): InventoryItemDiscardedEvent {
   return {
     ...BASE_FIELDS,
     id: "evt-3",
     streamPosition: 3,
-    eventType: "StockItemDiscarded",
+    eventType: "InventoryItemDiscarded",
     payload: {},
     actualTime: new Date("2026-03-03T10:00:00Z"),
     ...overrides,
   };
 }
 
-describe("StockItemModel", () => {
+describe("InventoryItemModel", () => {
   it("defaults to initial state with version 0", () => {
-    const model = new StockItemModel("si-1");
+    const model = new InventoryItemModel("si-1");
 
     expect(model.streamId).toBe("si-1");
-    expect(model.streamType).toBe("StockItem");
+    expect(model.streamType).toBe("InventoryItem");
     expect(model.productTypeId).toBeNull();
     expect(model.level).toBeNull();
     expect(model.discarded).toBe(false);
@@ -75,10 +77,10 @@ describe("StockItemModel", () => {
     expect(model.version).toBe(0);
   });
 
-  it("folds StockItemAdded and exposes computed getters", () => {
-    const model = new StockItemModel("si-1");
+  it("folds InventoryItemAdded and exposes computed getters", () => {
+    const model = new InventoryItemModel("si-1");
 
-    model.applyEvent(makeStockItemAddedEvent());
+    model.applyEvent(makeInventoryItemAddedEvent());
 
     expect(model.productTypeId).toBe("pt-1");
     expect(model.level).toBe("unopened");
@@ -86,19 +88,19 @@ describe("StockItemModel", () => {
     expect(model.version).toBe(1);
   });
 
-  it("folds StockItemConsumed", () => {
-    const model = new StockItemModel("si-1");
-    model.applyEvent(makeStockItemAddedEvent());
-    model.applyEvent(makeStockItemConsumedEvent());
+  it("folds InventoryItemConsumed", () => {
+    const model = new InventoryItemModel("si-1");
+    model.applyEvent(makeInventoryItemAddedEvent());
+    model.applyEvent(makeInventoryItemConsumedEvent());
 
     expect(model.level).toBe("opened");
     expect(model.version).toBe(2);
   });
 
-  it("folds StockItemDiscarded", () => {
-    const model = new StockItemModel("si-1");
-    model.applyEvent(makeStockItemAddedEvent());
-    model.applyEvent(makeStockItemDiscardedEvent({ streamPosition: 2 }));
+  it("folds InventoryItemDiscarded", () => {
+    const model = new InventoryItemModel("si-1");
+    model.applyEvent(makeInventoryItemAddedEvent());
+    model.applyEvent(makeInventoryItemDiscardedEvent({ streamPosition: 2 }));
 
     expect(model.discarded).toBe(true);
     expect(model.version).toBe(2);

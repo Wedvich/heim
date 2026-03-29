@@ -104,7 +104,7 @@ The `SyncStore` holds typed observable maps per aggregate type, plus sync state:
 ```typescript
 class SyncStore {
   readonly productTypes = observable.map<string, ProductTypeModel>();
-  readonly stockItems = observable.map<string, StockItemModel>();
+  readonly inventoryItems = observable.map<string, InventoryItemModel>();
   readonly tenants = observable.map<string, TenantModel>();
   readonly users = observable.map<string, UserModel>();
   cursor = "";

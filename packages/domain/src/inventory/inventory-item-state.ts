@@ -1,9 +1,9 @@
-import type { StockItemLevel } from "./stock-item-events.ts";
+import type { InventoryItemLevel } from "./inventory-item-events.ts";
 
-export interface StockItemState {
-  readonly stockItemId: string | null;
+export interface InventoryItemState {
+  readonly inventoryItemId: string | null;
   readonly productTypeId: string | null;
-  readonly level: StockItemLevel | null;
+  readonly level: InventoryItemLevel | null;
   readonly exactCount: number | null;
   readonly expiryDate: string | null;
   readonly purchaseDate: string | null;
@@ -11,8 +11,8 @@ export interface StockItemState {
   readonly createdAt: Date | null;
 }
 
-export const INITIAL_STOCK_ITEM_STATE: StockItemState = {
-  stockItemId: null,
+export const INITIAL_INVENTORY_ITEM_STATE: InventoryItemState = {
+  inventoryItemId: null,
   productTypeId: null,
   level: null,
   exactCount: null,

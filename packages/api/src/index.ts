@@ -15,8 +15,8 @@ import { OidcVerifierRegistry } from "./auth/oidc/registry.ts";
 import { GoogleOidcVerifier } from "./auth/oidc/google-verifier.ts";
 import {
   CommandHandlerRegistry,
+  inventoryItemHandler,
   productTypeHandler,
-  stockItemHandler,
   tenantHandler,
 } from "@heim/domain";
 import { LocalKeyManagementService } from "./crypto/kms.ts";
@@ -50,7 +50,7 @@ const kms = new LocalKeyManagementService(masterEncryptionKey);
 
 const commandRegistry = new CommandHandlerRegistry()
   .register(productTypeHandler)
-  .register(stockItemHandler)
+  .register(inventoryItemHandler)
   .register(tenantHandler);
 
 const projectorRegistry = new ProjectorRegistry();

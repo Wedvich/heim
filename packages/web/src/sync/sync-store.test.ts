@@ -176,15 +176,15 @@ describe("SyncStore", () => {
     expect(pt.version).toBe(1);
   });
 
-  it("populates stockItems map from snapshots", () => {
+  it("populates inventoryItems map from snapshots", () => {
     const store = new SyncStore();
     const snapshots: AggregateSnapshot[] = [
       {
         streamId: "si-1",
-        streamType: "StockItem",
+        streamType: "InventoryItem",
         version: 2,
         state: {
-          stockItemId: "si-1",
+          inventoryItemId: "si-1",
           productTypeId: "pt-1",
           level: "opened",
           exactCount: null,
@@ -198,8 +198,8 @@ describe("SyncStore", () => {
 
     store.loadSnapshots(snapshots, "10");
 
-    expect(store.stockItems.size).toBe(1);
-    const si = store.stockItems.get("si-1")!;
+    expect(store.inventoryItems.size).toBe(1);
+    const si = store.inventoryItems.get("si-1")!;
     expect(si.productTypeId).toBe("pt-1");
     expect(si.level).toBe("opened");
     expect(si.expiryDate).toBe("2026-06-01");

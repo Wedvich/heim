@@ -16,9 +16,9 @@ Command handlers are pure domain functions that make decisions — they don't co
 
 **Decision Events:** Handlers return `DecisionEvent` objects containing only `eventType` and `payload`. The `CommandHandlerRegistry` stamps each decision into a full `DomainEvent` with all envelope fields (`id`, `tenantId`, `streamId`, `streamPosition`, `correlationId`, `causationId`, `actingPrincipalId`, `effectivePrincipalId`, `metadata`, `actualTime`). Event IDs are generated and stream positions are derived automatically.
 
-**Follow-up Intents:** When one command should trigger another within the same aggregate (e.g., consuming a stock item to "empty" automatically discards it), the handler returns a `FollowUpIntent` containing only `type` and `payload`. The registry constructs the full follow-up `Command`, deriving `commandId`, `expectedVersion`, `causationId` (set to `event:<last-emitted-event-id>`), and all other fields from the originating command and accumulated state.
+**Follow-up Intents:** When one command should trigger another within the same aggregate (e.g., consuming an inventory item to "empty" automatically discards it), the handler returns a `FollowUpIntent` containing only `type` and `payload`. The registry constructs the full follow-up `Command`, deriving `commandId`, `expectedVersion`, `causationId` (set to `event:<last-emitted-event-id>`), and all other fields from the originating command and accumulated state.
 
-**Typed Commands:** Each aggregate defines a discriminated union of typed command payloads (e.g., `StockItemCommand`). Handlers cast once at their boundary and get fully typed `cmd.payload` in each switch branch, replacing scattered `as Type` casts.
+**Typed Commands:** Each aggregate defines a discriminated union of typed command payloads (e.g., `InventoryItemCommand`). Handlers cast once at their boundary and get fully typed `cmd.payload` in each switch branch, replacing scattered `as Type` casts.
 
 ```
 Command (typed payload)

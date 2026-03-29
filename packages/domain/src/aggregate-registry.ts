@@ -2,8 +2,8 @@ import type { ApplyFn } from "./aggregate.ts";
 import type { DomainEvent } from "./events.ts";
 import { applyProductTypeEvent } from "./inventory/product-type-fold.ts";
 import { INITIAL_PRODUCT_TYPE_STATE } from "./inventory/product-type-state.ts";
-import { applyStockItemEvent } from "./inventory/stock-item-fold.ts";
-import { INITIAL_STOCK_ITEM_STATE } from "./inventory/stock-item-state.ts";
+import { applyInventoryItemEvent } from "./inventory/inventory-item-fold.ts";
+import { INITIAL_INVENTORY_ITEM_STATE } from "./inventory/inventory-item-state.ts";
 import { applyTenantEvent } from "./tenant/tenant-fold.ts";
 import { INITIAL_TENANT_STATE } from "./tenant/tenant-state.ts";
 import { applyUserEvent } from "./user/user-fold.ts";
@@ -19,9 +19,9 @@ export const AGGREGATE_REGISTRY: Readonly<Record<string, AggregateConfig>> = {
     initial: INITIAL_PRODUCT_TYPE_STATE,
     apply: applyProductTypeEvent as ApplyFn<unknown, DomainEvent>,
   },
-  StockItem: {
-    initial: INITIAL_STOCK_ITEM_STATE,
-    apply: applyStockItemEvent as ApplyFn<unknown, DomainEvent>,
+  InventoryItem: {
+    initial: INITIAL_INVENTORY_ITEM_STATE,
+    apply: applyInventoryItemEvent as ApplyFn<unknown, DomainEvent>,
   },
   Tenant: {
     initial: INITIAL_TENANT_STATE,

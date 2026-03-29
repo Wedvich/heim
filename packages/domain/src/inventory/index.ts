@@ -16,24 +16,24 @@ export { productTypeHandler } from "./product-type-handler.ts";
 export { INITIAL_PRODUCT_TYPE_STATE, type ProductTypeState } from "./product-type-state.ts";
 
 export type {
-  AddStockItemPayload,
-  ConsumeStockItemPayload,
-  CorrectStockItemLevelPayload,
-  StockItemCommand,
-  StockItemCommandPayload,
-} from "./stock-item-commands.ts";
+  AddInventoryItemPayload,
+  ConsumeInventoryItemPayload,
+  CorrectInventoryItemLevelPayload,
+  InventoryItemCommand,
+  InventoryItemCommandPayload,
+} from "./inventory-item-commands.ts";
 export type {
-  StockItemAddedEvent,
-  StockItemAddedPayload,
-  StockItemConsumedEvent,
-  StockItemConsumedPayload,
-  StockItemDiscardedEvent,
-  StockItemEvent,
-  StockItemLevel,
-  StockItemLevelCorrectedEvent,
-  StockItemLevelCorrectedPayload,
-} from "./stock-item-events.ts";
-export { STOCK_ITEM_LEVELS } from "./stock-item-events.ts";
-export { applyStockItemEvent } from "./stock-item-fold.ts";
-export { stockItemHandler } from "./stock-item-handler.ts";
-export { INITIAL_STOCK_ITEM_STATE, type StockItemState } from "./stock-item-state.ts";
+  InventoryItemAddedEvent,
+  InventoryItemAddedPayload,
+  InventoryItemConsumedEvent,
+  InventoryItemConsumedPayload,
+  InventoryItemDiscardedEvent,
+  InventoryItemEvent,
+  InventoryItemLevel,
+  InventoryItemLevelCorrectedEvent,
+  InventoryItemLevelCorrectedPayload,
+} from "./inventory-item-events.ts";
+export { INVENTORY_ITEM_LEVELS } from "./inventory-item-events.ts";
+export { applyInventoryItemEvent } from "./inventory-item-fold.ts";
+export { inventoryItemHandler } from "./inventory-item-handler.ts";
+export { INITIAL_INVENTORY_ITEM_STATE, type InventoryItemState } from "./inventory-item-state.ts";

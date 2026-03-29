@@ -4,8 +4,8 @@ import supertest from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import {
   CommandHandlerRegistry,
+  inventoryItemHandler,
   productTypeHandler,
-  stockItemHandler,
   tenantHandler,
 } from "@heim/domain";
 import { LocalKeyManagementService } from "../crypto/kms.ts";
@@ -29,7 +29,7 @@ const SESSION: SessionContext = {
 function makeRegistry(): CommandHandlerRegistry {
   return new CommandHandlerRegistry()
     .register(productTypeHandler)
-    .register(stockItemHandler)
+    .register(inventoryItemHandler)
     .register(tenantHandler);
 }
 

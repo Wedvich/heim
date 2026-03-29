@@ -50,7 +50,7 @@
 - [x] Design sync architecture ([docs/sync-architecture.md](sync-architecture.md))
 - [x] Implement MobX model layer foundation (`Model` base class, `UserModel` subclass)
 - [x] Implement command type, handler interface, and handler registry in `@heim/domain`
-- [x] Implement first command handlers (Tenant, ProductType, StockItem)
+- [x] Implement first command handlers (Tenant, ProductType, InventoryItem)
 - [x] Implement `POST /api/sync/commands` (registry dispatch, event append)
 - [x] Implement `GET /api/sync/bootstrap` (fold all tenant aggregates, return snapshots + cursor)
 - [x] Implement `SyncStore` with observable maps, pending commands, speculative events
@@ -66,13 +66,13 @@
 
 ### Phase 4: First Feature Bounded Context — Household Inventory
 
-**Goal:** Full CRUD for the household inventory vertical (ProductType + StockItem aggregates).
+**Goal:** Full CRUD for the household inventory vertical (ProductType + InventoryItem aggregates).
 
 - [x] Define ProductType aggregate (events, fold, state, command handler)
-- [x] Define StockItem aggregate (events, fold, state, command handler)
-- [x] Frontend MobX models (ProductTypeModel, StockItemModel) with SyncStore integration
+- [x] Define InventoryItem aggregate (events, fold, state, command handler)
+- [x] Frontend MobX models (ProductTypeModel, InventoryItemModel) with SyncStore integration
 - [x] Command execution infrastructure (frontend registry, executeCommand orchestrator, sendCommand API)
-- [ ] Build inventory management UI (product type list, stock item CRUD)
+- [ ] Build inventory management UI (product type list, inventory item CRUD)
 - [ ] Implement idempotency check on `POST /api/sync/commands`
 - [ ] Implement conflict detection (aggregate version mismatch) on server
 - [ ] Add projectors for inventory read models

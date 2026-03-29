@@ -1,15 +1,15 @@
 import { makeAutoObservable, observable, runInAction } from "mobx";
 import type {
   DomainEvent,
+  InventoryItemState,
   ProductTypeState,
-  StockItemState,
   TenantState,
   UserState,
 } from "@heim/domain";
 import type { AggregateSnapshot } from "./api.ts";
 import type { Model } from "./model.ts";
 import { ProductTypeModel } from "./product-type-model.ts";
-import { StockItemModel } from "./stock-item-model.ts";
+import { InventoryItemModel } from "./inventory-item-model.ts";
 import { TenantModel } from "./tenant-model.ts";
 import { UserModel } from "./user-model.ts";
 
@@ -21,7 +21,7 @@ interface PendingCommand {
 
 export class SyncStore {
   readonly productTypes = observable.map<string, ProductTypeModel>();
-  readonly stockItems = observable.map<string, StockItemModel>();
+  readonly inventoryItems = observable.map<string, InventoryItemModel>();
   readonly tenants = observable.map<string, TenantModel>();
   readonly users = observable.map<string, UserModel>();
   cursor = "";
@@ -36,7 +36,7 @@ export class SyncStore {
   constructor() {
     makeAutoObservable(this, {
       productTypes: false,
-      stockItems: false,
+      inventoryItems: false,
       tenants: false,
       users: false,
     });
@@ -45,7 +45,7 @@ export class SyncStore {
   loadSnapshots(snapshots: AggregateSnapshot[], cursor: string): void {
     runInAction(() => {
       this.productTypes.clear();
-      this.stockItems.clear();
+      this.inventoryItems.clear();
       this.tenants.clear();
       this.users.clear();
       this.#pendingCommands.length = 0;
@@ -59,13 +59,13 @@ export class SyncStore {
             snapshot.version,
           );
           this.productTypes.set(snapshot.streamId, model);
-        } else if (snapshot.streamType === "StockItem") {
-          const model = new StockItemModel(
+        } else if (snapshot.streamType === "InventoryItem") {
+          const model = new InventoryItemModel(
             snapshot.streamId,
-            snapshot.state as unknown as StockItemState,
+            snapshot.state as unknown as InventoryItemState,
             snapshot.version,
           );
-          this.stockItems.set(snapshot.streamId, model);
+          this.inventoryItems.set(snapshot.streamId, model);
         } else if (snapshot.streamType === "Tenant") {
           const model = new TenantModel(
             snapshot.streamId,
@@ -156,8 +156,8 @@ export class SyncStore {
     switch (streamType) {
       case "ProductType":
         return this.productTypes.get(streamId);
-      case "StockItem":
-        return this.stockItems.get(streamId);
+      case "InventoryItem":
+        return this.inventoryItems.get(streamId);
       case "Tenant":
         return this.tenants.get(streamId);
       case "User":

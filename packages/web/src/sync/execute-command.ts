@@ -98,8 +98,8 @@ function getModel(
   switch (streamType) {
     case "ProductType":
       return syncStore.productTypes.get(streamId);
-    case "StockItem":
-      return syncStore.stockItems.get(streamId);
+    case "InventoryItem":
+      return syncStore.inventoryItems.get(streamId);
     case "Tenant":
       return syncStore.tenants.get(streamId);
     case "User":

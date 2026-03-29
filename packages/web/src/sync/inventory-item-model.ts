@@ -1,20 +1,20 @@
 import { computed, makeObservable } from "mobx";
 import {
-  applyStockItemEvent,
-  INITIAL_STOCK_ITEM_STATE,
-  type StockItemEvent,
-  type StockItemLevel,
-  type StockItemState,
+  applyInventoryItemEvent,
+  INITIAL_INVENTORY_ITEM_STATE,
+  type InventoryItemEvent,
+  type InventoryItemLevel,
+  type InventoryItemState,
 } from "@heim/domain";
 import { Model } from "./model.ts";
 
-export class StockItemModel extends Model<StockItemState, StockItemEvent> {
+export class InventoryItemModel extends Model<InventoryItemState, InventoryItemEvent> {
   constructor(
     streamId: string,
-    initialState: StockItemState = INITIAL_STOCK_ITEM_STATE,
+    initialState: InventoryItemState = INITIAL_INVENTORY_ITEM_STATE,
     initialVersion: number = 0,
   ) {
-    super(streamId, "StockItem", initialState, initialVersion);
+    super(streamId, "InventoryItem", initialState, initialVersion);
 
     makeObservable(this, {
       productTypeId: computed,
@@ -24,15 +24,18 @@ export class StockItemModel extends Model<StockItemState, StockItemEvent> {
     });
   }
 
-  protected override fold(state: StockItemState, event: StockItemEvent): StockItemState {
-    return applyStockItemEvent(state, event);
+  protected override fold(
+    state: InventoryItemState,
+    event: InventoryItemEvent,
+  ): InventoryItemState {
+    return applyInventoryItemEvent(state, event);
   }
 
   get productTypeId(): string | null {
     return this._state.productTypeId;
   }
 
-  get level(): StockItemLevel | null {
+  get level(): InventoryItemLevel | null {
     return this._state.level;
   }
 
