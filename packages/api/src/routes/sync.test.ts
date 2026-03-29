@@ -6,6 +6,7 @@ import {
   CommandHandlerRegistry,
   inventoryItemHandler,
   productTypeHandler,
+  roomHandler,
   tenantHandler,
 } from "@heim/domain";
 import { LocalKeyManagementService } from "../crypto/kms.ts";
@@ -30,6 +31,7 @@ function makeRegistry(): CommandHandlerRegistry {
   return new CommandHandlerRegistry()
     .register(productTypeHandler)
     .register(inventoryItemHandler)
+    .register(roomHandler)
     .register(tenantHandler);
 }
 

@@ -6,6 +6,8 @@ import { applyInventoryItemEvent } from "./inventory/inventory-item-fold.ts";
 import { INITIAL_INVENTORY_ITEM_STATE } from "./inventory/inventory-item-state.ts";
 import { applyTenantEvent } from "./tenant/tenant-fold.ts";
 import { INITIAL_TENANT_STATE } from "./tenant/tenant-state.ts";
+import { applyRoomEvent } from "./room/room-fold.ts";
+import { INITIAL_ROOM_STATE } from "./room/room-state.ts";
 import { applyUserEvent } from "./user/user-fold.ts";
 import { INITIAL_USER_STATE } from "./user/user-state.ts";
 
@@ -22,6 +24,10 @@ export const AGGREGATE_REGISTRY: Readonly<Record<string, AggregateConfig>> = {
   InventoryItem: {
     initial: INITIAL_INVENTORY_ITEM_STATE,
     apply: applyInventoryItemEvent as ApplyFn<unknown, DomainEvent>,
+  },
+  Room: {
+    initial: INITIAL_ROOM_STATE,
+    apply: applyRoomEvent as ApplyFn<unknown, DomainEvent>,
   },
   Tenant: {
     initial: INITIAL_TENANT_STATE,

@@ -17,6 +17,7 @@ import {
   CommandHandlerRegistry,
   inventoryItemHandler,
   productTypeHandler,
+  roomHandler,
   tenantHandler,
 } from "@heim/domain";
 import { LocalKeyManagementService } from "./crypto/kms.ts";
@@ -51,6 +52,7 @@ const kms = new LocalKeyManagementService(masterEncryptionKey);
 const commandRegistry = new CommandHandlerRegistry()
   .register(productTypeHandler)
   .register(inventoryItemHandler)
+  .register(roomHandler)
   .register(tenantHandler);
 
 const projectorRegistry = new ProjectorRegistry();

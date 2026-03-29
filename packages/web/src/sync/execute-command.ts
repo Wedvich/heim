@@ -100,6 +100,8 @@ function getModel(
       return syncStore.productTypes.get(streamId);
     case "InventoryItem":
       return syncStore.inventoryItems.get(streamId);
+    case "Room":
+      return syncStore.rooms.get(streamId);
     case "Tenant":
       return syncStore.tenants.get(streamId);
     case "User":

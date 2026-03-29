@@ -62,6 +62,31 @@ export type {
   ProductTypeUpdatedPayload,
   UpdateProductTypePayload,
 } from "./inventory/index.ts";
+export { applyRoomEvent, INITIAL_ROOM_STATE, roomHandler, SPOT_KINDS } from "./room/index.ts";
+export type {
+  AddSpotPayload,
+  CreateRoomPayload,
+  RemoveSpotPayload,
+  RenameRoomPayload,
+  RenameSpotPayload,
+  RoomArchivedEvent,
+  RoomCommand,
+  RoomCommandPayload,
+  RoomCreatedEvent,
+  RoomCreatedPayload,
+  RoomEvent,
+  RoomRenamedEvent,
+  RoomRenamedPayload,
+  RoomState,
+  SpotAddedEvent,
+  SpotAddedPayload,
+  SpotKind,
+  SpotRemovedEvent,
+  SpotRemovedPayload,
+  SpotRenamedEvent,
+  SpotRenamedPayload,
+  SpotState,
+} from "./room/index.ts";
 export {
   applyTenantEvent,
   INITIAL_TENANT_STATE,

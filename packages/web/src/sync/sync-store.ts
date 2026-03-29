@@ -3,6 +3,7 @@ import type {
   DomainEvent,
   InventoryItemState,
   ProductTypeState,
+  RoomState,
   TenantState,
   UserState,
 } from "@heim/domain";
@@ -10,6 +11,7 @@ import type { AggregateSnapshot } from "./api.ts";
 import type { Model } from "./model.ts";
 import { ProductTypeModel } from "./product-type-model.ts";
 import { InventoryItemModel } from "./inventory-item-model.ts";
+import { RoomModel } from "./room-model.ts";
 import { TenantModel } from "./tenant-model.ts";
 import { UserModel } from "./user-model.ts";
 
@@ -22,6 +24,7 @@ interface PendingCommand {
 export class SyncStore {
   readonly productTypes = observable.map<string, ProductTypeModel>();
   readonly inventoryItems = observable.map<string, InventoryItemModel>();
+  readonly rooms = observable.map<string, RoomModel>();
   readonly tenants = observable.map<string, TenantModel>();
   readonly users = observable.map<string, UserModel>();
   cursor = "";
@@ -37,6 +40,7 @@ export class SyncStore {
     makeAutoObservable(this, {
       productTypes: false,
       inventoryItems: false,
+      rooms: false,
       tenants: false,
       users: false,
     });
@@ -46,6 +50,7 @@ export class SyncStore {
     runInAction(() => {
       this.productTypes.clear();
       this.inventoryItems.clear();
+      this.rooms.clear();
       this.tenants.clear();
       this.users.clear();
       this.#pendingCommands.length = 0;
@@ -66,6 +71,13 @@ export class SyncStore {
             snapshot.version,
           );
           this.inventoryItems.set(snapshot.streamId, model);
+        } else if (snapshot.streamType === "Room") {
+          const model = new RoomModel(
+            snapshot.streamId,
+            snapshot.state as unknown as RoomState,
+            snapshot.version,
+          );
+          this.rooms.set(snapshot.streamId, model);
         } else if (snapshot.streamType === "Tenant") {
           const model = new TenantModel(
             snapshot.streamId,
@@ -158,6 +170,8 @@ export class SyncStore {
         return this.productTypes.get(streamId);
       case "InventoryItem":
         return this.inventoryItems.get(streamId);
+      case "Room":
+        return this.rooms.get(streamId);
       case "Tenant":
         return this.tenants.get(streamId);
       case "User":
