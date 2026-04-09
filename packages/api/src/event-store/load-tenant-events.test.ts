@@ -1,12 +1,12 @@
-import { randomBytes } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { LocalKeyManagementService } from "../crypto/kms.ts";
 import { encryptPayload } from "../crypto/payload-encryption.ts";
 import { makeClient } from "../test-helpers.ts";
 import { loadTenantEvents } from "./load-tenant-events.ts";
 
-const MEK = randomBytes(32).toString("base64");
-const kms = new LocalKeyManagementService(MEK);
+const { publicKey, privateKey } = generateKeyPairSync("ml-kem-768");
+const kms = new LocalKeyManagementService(publicKey, privateKey);
 
 async function makeEncryptedPii(pii: Record<string, unknown>): Promise<{
   encryptedPayload: Buffer;

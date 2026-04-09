@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 import express from "express";
 import supertest from "supertest";
 import { describe, expect, it, vi } from "vitest";
@@ -17,8 +17,8 @@ import { makeClient, makePool } from "../test-helpers.ts";
 import type { SessionContext } from "../session-context.ts";
 import { createSyncRouter } from "./sync.ts";
 
-const MEK = randomBytes(32).toString("base64");
-const kms = new LocalKeyManagementService(MEK);
+const { publicKey, privateKey } = generateKeyPairSync("ml-kem-768");
+const kms = new LocalKeyManagementService(publicKey, privateKey);
 
 const SESSION: SessionContext = {
   sessionId: "session-1",

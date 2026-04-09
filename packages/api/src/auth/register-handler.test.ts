@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerHandler } from "./register-handler.ts";
 import { TokenVerificationError } from "./oidc/types.ts";
@@ -62,7 +62,8 @@ const mockStoreForgettablePayload = vi.mocked(storeForgettablePayload);
 const noop = vi.fn();
 const EMAIL_HMAC_KEY = "test-key";
 
-const kms = new LocalKeyManagementService(randomBytes(32).toString("base64"));
+const { publicKey: mekPublicKey, privateKey: mekSecretKey } = generateKeyPairSync("ml-kem-768");
+const kms = new LocalKeyManagementService(mekPublicKey, mekSecretKey);
 
 const validIdentity = {
   provider: "google",

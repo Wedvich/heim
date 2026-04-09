@@ -7,7 +7,7 @@ import { createAuthRouter } from "../../src/routes/auth.ts";
 import { createTenantsRouter } from "../../src/routes/tenants.ts";
 import { OidcVerifierRegistry } from "../../src/auth/oidc/registry.ts";
 import { LocalKeyManagementService } from "../../src/crypto/kms.ts";
-import { randomBytes } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 
 vi.mock("../../src/db.ts", () => ({
   pool: {
@@ -15,7 +15,8 @@ vi.mock("../../src/db.ts", () => ({
   },
 }));
 
-const kms = new LocalKeyManagementService(randomBytes(32).toString("base64"));
+const { publicKey, privateKey } = generateKeyPairSync("ml-kem-768");
+const kms = new LocalKeyManagementService(publicKey, privateKey);
 
 function createTestApp() {
   const registry = new OidcVerifierRegistry();

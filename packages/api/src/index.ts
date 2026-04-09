@@ -20,6 +20,7 @@ import {
   roomHandler,
   tenantHandler,
 } from "@heim/domain";
+import { createPrivateKey, createPublicKey } from "node:crypto";
 import { LocalKeyManagementService } from "./crypto/kms.ts";
 import { requireEnv } from "./env.ts";
 import { ProjectorRegistry } from "./event-store/projector-registry.ts";
@@ -27,7 +28,16 @@ import { registerTenantProjectors } from "./projectors/tenant-projectors.ts";
 
 const googleClientId = requireEnv("GOOGLE_CLIENT_ID");
 const emailHmacKey = requireEnv("EMAIL_HMAC_KEY");
-const masterEncryptionKey = requireEnv("MASTER_ENCRYPTION_KEY");
+const mekPublicKey = createPublicKey({
+  key: Buffer.from(requireEnv("MEK_PUBLIC_KEY"), "base64"),
+  format: "der",
+  type: "spki",
+});
+const mekSecretKey = createPrivateKey({
+  key: Buffer.from(requireEnv("MEK_SECRET_KEY"), "base64"),
+  format: "der",
+  type: "pkcs8",
+});
 
 const regTokenSecret = Buffer.from(requireEnv("REG_TOKEN_SECRET"), "base64");
 if (regTokenSecret.length !== 32) {
@@ -47,7 +57,7 @@ const port = 5244;
 const oidcRegistry = new OidcVerifierRegistry();
 oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
-const kms = new LocalKeyManagementService(masterEncryptionKey);
+const kms = new LocalKeyManagementService(mekPublicKey, mekSecretKey);
 
 const commandRegistry = new CommandHandlerRegistry()
   .register(productTypeHandler)
