@@ -7,7 +7,7 @@
 - [x] Define base event types with bitemporal metadata (record time + actual time)
 - [x] Implement Postgres event store tables (events, forgettable_payloads, forgettable_payload_keys)
 - [x] Implement event append (`appendEvents`) and forgettable payload storage
-- [x] Implement KMS abstraction + payload encryption (AES-256-GCM, MEK → DEK)
+- [x] Implement KMS abstraction + payload encryption (ML-KEM-768 encapsulation + AES-256-GCM)
 - [x] Co-write first event: `UserCreated` with encrypted forgettable payload (PII)
 - [x] Co-write remaining register-flow events (no PII encryption):
   - [x] `TenantCreated` — create-tenant invite path

@@ -16,14 +16,21 @@ The API runs at `http://localhost:5244`.
 
 Set these before starting the API (or in a `.env` file if you use one):
 
-| Variable                | Required for     | Example                                   |
-| ----------------------- | ---------------- | ----------------------------------------- |
-| `GOOGLE_CLIENT_ID`      | Login + Register | `123456.apps.googleusercontent.com`       |
-| `EMAIL_HMAC_KEY`        | Register only    | Any secret string, e.g. `my-dev-hmac-key` |
-| `MASTER_ENCRYPTION_KEY` | Register only    | Base64-encoded 32 bytes (see below)       |
-| `REG_TOKEN_SECRET`      | Register only    | Base64-encoded 32 bytes (see below)       |
+| Variable           | Required for     | Example                                                     |
+| ------------------ | ---------------- | ----------------------------------------------------------- |
+| `GOOGLE_CLIENT_ID` | Login + Register | `123456.apps.googleusercontent.com`                         |
+| `EMAIL_HMAC_KEY`   | Register only    | Any secret string, e.g. `my-dev-hmac-key`                   |
+| `MEK_PUBLIC_KEY`   | Register only    | ML-KEM-768 public key, base64-encoded SPKI DER (see below)  |
+| `MEK_SECRET_KEY`   | Register only    | ML-KEM-768 secret key, base64-encoded PKCS8 DER (see below) |
+| `REG_TOKEN_SECRET` | Register only    | Base64-encoded 32 bytes (see below)                         |
 
-Generate dev secrets (`MASTER_ENCRYPTION_KEY` and `REG_TOKEN_SECRET`):
+Generate dev MEK key pair:
+
+```bash
+node packages/api/src/crypto/generate-mlkem-keypair.ts
+```
+
+Generate `REG_TOKEN_SECRET`:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"

@@ -1,6 +1,48 @@
 # Session Recap
 
-## Latest: Room Aggregate and Tabbed Settings UI
+## Latest: ML-KEM-768 Post-Quantum Key Encapsulation
+
+Replaced the symmetric AES-256-GCM MEK wrapping in `LocalKeyManagementService` with ML-KEM-768 (NIST FIPS 203) key encapsulation using native `node:crypto` APIs (Node.js 25).
+
+### What changed
+
+**Crypto — KMS** (`packages/api/src/crypto/`):
+
+| File                        | Change                                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kms.ts`                    | `LocalKeyManagementService` now uses `encapsulate`/`decapsulate` with ML-KEM-768 KeyObjects instead of symmetric AES wrapping with a base64 MEK string |
+| `kms.test.ts`               | Tests updated for ML-KEM keypair construction; added wrong-key-rejection test                                                                          |
+| `generate-mlkem-keypair.ts` | New CLI utility to generate MEK key pairs as base64-encoded DER                                                                                        |
+
+**API bootstrap** (`packages/api/src/index.ts`): Loads `MEK_PUBLIC_KEY` / `MEK_SECRET_KEY` env vars (base64 DER), constructs `KeyObject` instances via `createPublicKey`/`createPrivateKey`.
+
+**Test files updated**: `register-handler.test.ts`, `load-tenant-events.test.ts`, `sync.test.ts`, `unauthenticated-access.test.ts` — all switched from `randomBytes(32).toString("base64")` to `generateKeyPairSync("ml-kem-768")`.
+
+**Docs**: `database.md` (secrets table, encryption model, DEK wrapping format), `security.md` (A04 crypto posture), `testing-guide.md` (env var table).
+
+**Dependencies**: Also includes two Dependabot PRs bumping production and dev dependencies.
+
+### Design decisions
+
+- **No hybrid/v1-v2 routing**: No production data exists, so the old symmetric implementation was replaced entirely rather than kept alongside.
+- **Class name preserved**: `LocalKeyManagementService` keeps its name — only the internals changed. The `KeyManagementService` interface is unchanged.
+- **Env var naming**: `MEK_PUBLIC_KEY` / `MEK_SECRET_KEY` — short `MEK_` prefix communicates purpose (master encryption key) without embedding the algorithm name.
+- **Reuses existing AES-256-GCM**: The KEM shared secret is used as a key for `encryptPayload`/`decryptPayload` — same functions used for payload encryption, no new crypto code.
+
+### Test coverage
+
+112 tests across 20 test files, all passing. Typecheck and lint clean.
+
+### Next up
+
+- Add internationalization (i18n) with Norwegian (Bokmål) and English, extensible for more languages
+- Build inventory management UI (product type list, inventory item CRUD)
+- Implement idempotency check on `POST /api/sync/commands`
+- Implement conflict detection (aggregate version mismatch) on server
+
+---
+
+## Previous: Room Aggregate and Tabbed Settings UI
 
 Two commits adding the Room aggregate with spot management and a full settings interface.
 
