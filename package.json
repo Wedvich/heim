@@ -26,9 +26,9 @@
     "@types/node": "^25.5.0",
     "@typescript/native-preview": "^7.0.0-dev.20260218.1",
     "@vitest/coverage-v8": "^4.1.0",
-    "lefthook": "^2.1.4",
-    "oxfmt": "^0.42.0",
-    "oxlint": "^1.57.0",
+    "lefthook": "^2.1.5",
+    "oxfmt": "^0.44.0",
+    "oxlint": "^1.59.0",
     "turbo": "^2.8.20",
     "vitest": "^4.1.0"
   },
