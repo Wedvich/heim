@@ -16,7 +16,7 @@
     "dev": "turbo dev",
     "invite": "node scripts/create-invite.ts",
     "lint": "turbo lint",
-    "postinstall": "lefthook install",
+    "postinstall": "lefthook install --force",
     "test": "turbo test",
     "typecheck": "turbo typecheck"
   },
