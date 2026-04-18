@@ -23,14 +23,14 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "@typescript/native-preview": "^7.0.0-dev.20260218.1",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.4",
     "lefthook": "^2.1.5",
-    "oxfmt": "^0.44.0",
-    "oxlint": "^1.59.0",
-    "turbo": "^2.8.20",
-    "vitest": "^4.1.0"
+    "oxfmt": "^0.45.0",
+    "oxlint": "^1.60.0",
+    "turbo": "^2.9.6",
+    "vitest": "^4.1.4"
   },
   "packageManager": "yarn@4.13.0+sha512.5c20ba010c99815433e5c8453112165e673f1c7948d8d2b267f4b5e52097538658388ebc9f9580656d9b75c5cc996f990f611f99304a2197d4c56d21eea370e7"
 }
