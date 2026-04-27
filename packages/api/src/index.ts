@@ -20,7 +20,8 @@ import {
   roomHandler,
   tenantHandler,
 } from "@heim/domain";
-import { LocalKeyManagementService } from "./crypto/kms.ts";
+import { LocalKeyManagementService, HybridKeyManagementService } from "./crypto/kms.ts";
+import { MlKemKeyManagementService } from "./crypto/mlkem-kms.ts";
 import { requireEnv } from "./env.ts";
 import { ProjectorRegistry } from "./event-store/projector-registry.ts";
 import { registerTenantProjectors } from "./projectors/tenant-projectors.ts";
@@ -47,7 +48,14 @@ const port = 5244;
 const oidcRegistry = new OidcVerifierRegistry();
 oidcRegistry.register(new GoogleOidcVerifier({ clientId: googleClientId }));
 
-const kms = new LocalKeyManagementService(masterEncryptionKey);
+const mlkemKms = MlKemKeyManagementService.fromBase64(
+  requireEnv("MLKEM_PUBLIC_KEY"),
+  requireEnv("MLKEM_SECRET_KEY"),
+);
+const kms = new HybridKeyManagementService(
+  new LocalKeyManagementService(masterEncryptionKey),
+  mlkemKms,
+);
 
 const commandRegistry = new CommandHandlerRegistry()
   .register(productTypeHandler)

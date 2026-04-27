@@ -123,11 +123,12 @@ tests/supply-chain/
 
 - Session tokens: 32-byte `crypto.randomBytes`, base64url
 - Email correlation: HMAC-SHA256 with dedicated `EMAIL_HMAC_KEY`
-- 2-tier MEK→DEK envelope encryption for forgettable payloads (AES-256-GCM via `encryptPayload`/`decryptPayload`)
-- `LocalKeyManagementService`: generates per-principal DEKs, encrypts them with MEK, supports MEK versioning
+- 2-tier key hierarchy for forgettable payloads: ML-KEM-768 hybrid wrapping (v2) with AES-256-GCM payload encryption
+- `HybridKeyManagementService` routes to `MlKemKeyManagementService` (v2, ML-KEM-768 + AES-256-GCM) or `LocalKeyManagementService` (v1, legacy AES-only) based on `mek_version`
+- ML-KEM-768 (NIST FIPS 203) provides post-quantum key encapsulation and privilege separation — public key wraps DEKs, only private key can unwrap
 - Registration cookie (`heim_reg`): AES-256-GCM encrypted with dedicated `REG_TOKEN_SECRET`, httpOnly, 15-min TTL. Carries verified Google identity claims between auth callback and registration completion. PII (email, name, avatar) never appears in cleartext outside the server's encryption envelope.
 - `secure` cookie flag in production
-- Three independent server secrets: `MASTER_ENCRYPTION_KEY`, `EMAIL_HMAC_KEY`, `REG_TOKEN_SECRET` (see [docs/database.md](database.md) for details)
+- Five independent server secrets: `MLKEM_PUBLIC_KEY`, `MLKEM_SECRET_KEY`, `MASTER_ENCRYPTION_KEY` (legacy), `EMAIL_HMAC_KEY`, `REG_TOKEN_SECRET` (see [docs/database.md](database.md) for details)
 
 ### Gaps
 

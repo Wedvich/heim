@@ -187,29 +187,35 @@ Per-principal encryption keys for forgettable payloads.
 | --------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`            | UUID PK                | `uuidv7()`                                                                                                                                                                      |
 | `principal_id`  | UUID FK → `principals` | Required, unique — one key per principal.                                                                                                                                       |
-| `encrypted_key` | bytea                  | Required. The data encryption key (DEK), encrypted with the current master encryption key (MEK).                                                                                |
-| `mek_version`   | smallint               | Required. Identifies which MEK version was used to encrypt this DEK. Enables gradual MEK rotation — re-encrypt DEKs in batches, track progress via `WHERE mek_version = <old>`. |
+| `encrypted_key` | bytea                  | Required. The DEK, wrapped by the active key encapsulation scheme. v1: AES-256-GCM with symmetric MEK (~60 bytes). v2: ML-KEM-768 ciphertext ‖ AES-256-GCM wrapped DEK (~1148 bytes). |
+| `mek_version`   | smallint               | Required. Identifies which wrapping scheme was used. `1` = legacy AES-only MEK wrap, `2` = ML-KEM-768 hybrid. Enables gradual migration — re-wrap DEKs in batches, track progress via `WHERE mek_version = <old>`. |
 | `created_at`    | timestamptz            |                                                                                                                                                                                 |
 
-**Encryption model:** 2-tier MEK → DEK. Each principal has one DEK (stored here, encrypted by the MEK). The MEK (master encryption key) is a server-side secret, separate from the `EMAIL_HMAC_KEY` used for email hashing. A per-tenant KEK tier was considered but rejected — principals span tenants, so mapping DEKs to tenant-scoped KEKs would require multiple DEKs per principal.
+**Encryption model:** 2-tier key hierarchy. Each principal has one DEK (stored here, wrapped by the active scheme). A per-tenant KEK tier was considered but rejected — principals span tenants, so mapping DEKs to tenant-scoped KEKs would require multiple DEKs per principal.
 
-The MEK MUST be stored in a KMS (AWS KMS, GCP Cloud KMS, or HashiCorp Vault) in production. The application never holds the MEK in memory — it sends the encrypted DEK to the KMS for unwrapping. For local development (Docker Compose), a file-based or env var fallback is acceptable, but the application code must use the same KMS abstraction interface.
+**v2 (ML-KEM-768 hybrid):** New DEKs are wrapped using ML-KEM-768 (NIST FIPS 203) key encapsulation via Node.js native `crypto.encapsulate` / `crypto.decapsulate`. The ML-KEM shared secret is used as an AES-256-GCM key to wrap the random DEK. This provides post-quantum key encapsulation and privilege separation — the ML-KEM public key (used for encapsulation) cannot recover existing DEKs; only the private key (held by KMS/HSM) can decapsulate.
+
+**v1 (legacy AES-only):** Existing DEKs wrapped with a symmetric MEK via AES-256-GCM. Retained for backward compatibility during migration.
+
+In production, the ML-KEM private key and legacy MEK MUST be stored in a KMS (AWS KMS, GCP Cloud KMS, or HashiCorp Vault). For local development, env var fallbacks are acceptable, but the application code must use the same `KeyManagementService` abstraction interface.
 
 The MEK and `EMAIL_HMAC_KEY` MUST be separate secrets with independent access controls. A single compromise should not expose both the encryption hierarchy and the identity correlation mechanism.
 
 ### Required secrets
 
-| Secret                  | Format           | Purpose                                                                                                                                                                                                                                                       |
-| ----------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MASTER_ENCRYPTION_KEY` | 32 bytes, base64 | MEK — wraps per-principal DEKs for forgettable payload encryption. Must be backed by KMS in prod.                                                                                                                                                             |
-| `EMAIL_HMAC_KEY`        | Arbitrary length | HMAC-SHA256 key for email-hash-based identity correlation across providers.                                                                                                                                                                                   |
-| `REG_TOKEN_SECRET`      | 32 bytes, base64 | AES-256-GCM key for encrypting the short-lived registration cookie (`heim_reg`) during multi-step registration. Ephemeral-use only — protects PII (email, name, avatar) in transit between the Google auth callback and the registration completion endpoint. |
+| Secret                  | Format                        | Purpose                                                                                                                                                                                                                                                       |
+| ----------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MLKEM_PUBLIC_KEY`      | ML-KEM-768 SPKI DER, base64  | ML-KEM-768 encapsulation key — used to wrap new per-principal DEKs. Safe to distribute; cannot decrypt.                                                                                                                                                       |
+| `MLKEM_SECRET_KEY`      | ML-KEM-768 PKCS8 DER, base64 | ML-KEM-768 decapsulation key — used to unwrap DEKs for decryption. Must be backed by KMS in prod.                                                                                                                                                            |
+| `MASTER_ENCRYPTION_KEY` | 32 bytes, base64              | Legacy MEK — wraps v1 per-principal DEKs. Retained for backward compat during migration. Must be backed by KMS in prod.                                                                                                                                      |
+| `EMAIL_HMAC_KEY`        | Arbitrary length              | HMAC-SHA256 key for email-hash-based identity correlation across providers.                                                                                                                                                                                   |
+| `REG_TOKEN_SECRET`      | 32 bytes, base64              | AES-256-GCM key for encrypting the short-lived registration cookie (`heim_reg`) during multi-step registration. Ephemeral-use only — protects PII (email, name, avatar) in transit between the Google auth callback and the registration completion endpoint. |
 
-All three MUST be independent. Rotation of one must not affect the others. In local development, random values generated at first start are acceptable. In production, use env vars sourced from a secrets manager.
+All five MUST be independent. Rotation of one must not affect the others. In local development, random values generated at first start are acceptable. In production, use env vars sourced from a secrets manager.
 
 **Key loss:** If the MEK is lost, all forgettable payloads become permanently unreadable. This is identical to the crypto shredding outcome but unintentional. The MEK must have a documented backup/escrow procedure. This procedure should be specified in operational documentation before production deployment.
 
-**MEK rotation:** the application decrypts each DEK with the old MEK (identified by `mek_version`) and re-encrypts it with the new MEK, updating `mek_version` accordingly. Progress is trackable via `WHERE mek_version = <old>`.
+**Key rotation:** For v1→v2 migration, the application decrypts each DEK with the old MEK and re-wraps it with ML-KEM, updating `mek_version` from 1 to 2. For ML-KEM key pair rotation, the application decapsulates with the old private key and re-encapsulates with the new public key. Progress is trackable via `WHERE mek_version = <old>`.
 
 **Forgetting data:** two complementary mechanisms, both application-driven:
 

@@ -57,3 +57,22 @@ export class LocalKeyManagementService implements KeyManagementService {
     return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   }
 }
+
+export class HybridKeyManagementService implements KeyManagementService {
+  readonly #legacy: KeyManagementService;
+  readonly #mlkem: KeyManagementService;
+
+  constructor(legacy: KeyManagementService, mlkem: KeyManagementService) {
+    this.#legacy = legacy;
+    this.#mlkem = mlkem;
+  }
+
+  generateDek(): Promise<GeneratedDek> {
+    return this.#mlkem.generateDek();
+  }
+
+  decryptDek(encryptedDek: Buffer, mekVersion: number): Promise<Buffer> {
+    if (mekVersion === 1) return this.#legacy.decryptDek(encryptedDek, mekVersion);
+    return this.#mlkem.decryptDek(encryptedDek, mekVersion);
+  }
+}

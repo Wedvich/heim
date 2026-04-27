@@ -1,6 +1,7 @@
-import { randomBytes } from "node:crypto";
+import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { LocalKeyManagementService } from "./kms.ts";
+import { LocalKeyManagementService, HybridKeyManagementService } from "./kms.ts";
+import { MlKemKeyManagementService } from "./mlkem-kms.ts";
 
 const validMek = randomBytes(32).toString("base64");
 
@@ -47,5 +48,48 @@ describe("LocalKeyManagementService", () => {
 
     expect(a.plaintextDek).not.toEqual(b.plaintextDek);
     expect(a.encryptedDek).not.toEqual(b.encryptedDek);
+  });
+});
+
+describe("HybridKeyManagementService", () => {
+  function createHybrid() {
+    const legacy = new LocalKeyManagementService(validMek);
+    const { publicKey, privateKey } = generateKeyPairSync("ml-kem-768");
+    const mlkem = new MlKemKeyManagementService(publicKey, privateKey);
+    return { hybrid: new HybridKeyManagementService(legacy, mlkem), legacy, mlkem };
+  }
+
+  it("generates new DEKs via ML-KEM (mekVersion 2)", async () => {
+    const { hybrid } = createHybrid();
+    const { plaintextDek, encryptedDek, mekVersion } = await hybrid.generateDek();
+
+    expect(mekVersion).toBe(2);
+    expect(plaintextDek).toHaveLength(32);
+    expect(encryptedDek.length).toBeGreaterThan(1088);
+
+    const decrypted = await hybrid.decryptDek(encryptedDek, mekVersion);
+    expect(decrypted).toEqual(plaintextDek);
+  });
+
+  it("decrypts legacy v1 DEKs via AES path", async () => {
+    const { hybrid, legacy } = createHybrid();
+    const { plaintextDek, encryptedDek, mekVersion } = await legacy.generateDek();
+    expect(mekVersion).toBe(1);
+
+    const decrypted = await hybrid.decryptDek(encryptedDek, mekVersion);
+    expect(decrypted).toEqual(plaintextDek);
+  });
+
+  it("routes v2 to ML-KEM and v1 to legacy without cross-contamination", async () => {
+    const { hybrid, legacy } = createHybrid();
+
+    const v1 = await legacy.generateDek();
+    const v2 = await hybrid.generateDek();
+
+    const d1 = await hybrid.decryptDek(v1.encryptedDek, v1.mekVersion);
+    const d2 = await hybrid.decryptDek(v2.encryptedDek, v2.mekVersion);
+
+    expect(d1).toEqual(v1.plaintextDek);
+    expect(d2).toEqual(v2.plaintextDek);
   });
 });
