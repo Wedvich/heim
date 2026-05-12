@@ -78,3 +78,4 @@ Filter to a specific package with `-F`:
 - [docs/tech-stack.md](docs/tech-stack.md)
 - [docs/testing-guide.md](docs/testing-guide.md)
 - [docs/testing.md](docs/testing.md)
+- [docs/user-settings.md](docs/user-settings.md)

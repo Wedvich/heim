@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>Heim</title>
+    <script>
+      (function () {
+        try {
+          var pref = localStorage.getItem("color-scheme") || "system";
+          var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var resolved = pref === "system" ? (systemDark ? "dark" : "light") : pref;
+          var root = document.documentElement;
+          root.dataset.colorSchemePref = pref;
+          root.dataset.colorScheme = resolved;
+          root.style.colorScheme = resolved;
+        } catch (_) {
+          // localStorage can throw in private modes; CSS media query default applies.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
