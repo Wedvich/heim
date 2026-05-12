@@ -6,6 +6,7 @@
   "javascript.preferences.importModuleSpecifierEnding": "js",
   "oxc.unusedDisableDirectives": "deny",
   "typescript.experimental.useTsgo": true,
+  "typescript.native-preview.tsdk": "node_modules/@typescript/native-preview",
   "typescript.preferences.importModuleSpecifier": "relative",
   "typescript.preferences.importModuleSpecifierEnding": "js"
 }
