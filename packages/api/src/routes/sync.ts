@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import type { Pool } from "pg";
 import {
@@ -5,6 +6,7 @@ import {
   buildAggregate,
   type Command,
   type CommandHandlerRegistry,
+  type SeedFile,
 } from "@heim/domain";
 import type { KeyManagementService } from "../crypto/kms.ts";
 import { appendEvents } from "../event-store/append-events.ts";
@@ -143,6 +145,93 @@ export function createSyncRouter(
       await client.query("COMMIT");
 
       res.json({ ok: true, events: result.events });
+    } catch {
+      await client.query("ROLLBACK").catch(() => {});
+      res.status(500).json({ error: "internal_error" });
+    } finally {
+      client.release();
+    }
+  });
+
+  router.post("/commands/batch", async (req, res) => {
+    if (!req.session) {
+      res.status(401).json({ error: "not_authenticated" });
+      return;
+    }
+
+    const body = req.body as SeedFile;
+
+    if (body.version !== 1) {
+      res.status(400).json({ error: "unsupported_version" });
+      return;
+    }
+
+    if (!Array.isArray(body.commands) || body.commands.length === 0) {
+      res.status(400).json({ error: "empty_commands" });
+      return;
+    }
+
+    const { tenantId, principalId } = req.session;
+    const correlationId = randomUUID();
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      let imported = 0;
+
+      for (let i = 0; i < body.commands.length; i++) {
+        const seedCmd = body.commands[i]!;
+
+        const config = AGGREGATE_REGISTRY[seedCmd.streamType];
+        if (!config) {
+          await client.query("ROLLBACK");
+          res.status(400).json({
+            error: "unknown_stream_type",
+            index: i,
+            streamType: seedCmd.streamType,
+          });
+          return;
+        }
+
+        const streamEvents = await loadStreamEvents(client, tenantId, seedCmd.streamId);
+        const aggregate = buildAggregate(config.initial, streamEvents, config.apply);
+
+        const commandId = randomUUID();
+        const command: Command = {
+          commandId,
+          correlationId,
+          causationId: `batch:${correlationId}`,
+          streamId: seedCmd.streamId,
+          streamType: seedCmd.streamType,
+          type: seedCmd.type,
+          payload: seedCmd.payload,
+          expectedVersion: aggregate.version,
+          actualTime: seedCmd.actualTime ? new Date(seedCmd.actualTime) : new Date(),
+          tenantId,
+          actingPrincipalId: principalId,
+          effectivePrincipalId: null,
+        };
+
+        const result = commandRegistry.handle(aggregate.state, command, config);
+
+        if (!result.ok) {
+          await client.query("ROLLBACK");
+          res.status(422).json({
+            error: "command_rejected",
+            index: i,
+            reason: result.reason,
+          });
+          return;
+        }
+
+        await appendEvents(client, [...result.events]);
+        await projectorRegistry.apply(client, result.events);
+        imported++;
+      }
+
+      await client.query("COMMIT");
+      res.json({ ok: true, imported });
     } catch {
       await client.query("ROLLBACK").catch(() => {});
       res.status(500).json({ error: "internal_error" });
