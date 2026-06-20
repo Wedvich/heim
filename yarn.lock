@@ -485,15 +485,15 @@ __metadata:
     "@types/supertest": "npm:^7.2.0"
     cors: "npm:^2.8.6"
     express: "npm:^5.1.0"
-    google-auth-library: "npm:^10.6.2"
-    helmet: "npm:^8.1.0"
+    google-auth-library: "npm:^10.7.0"
+    helmet: "npm:^8.2.0"
     oxlint: "npm:^1.66.0"
     pg: "npm:^8.20.0"
     pino: "npm:^10.3.1"
     pino-http: "npm:^11.0.0"
     pino-pretty: "npm:^13.0.0"
     supertest: "npm:^7.2.2"
-    uuid: "npm:^13.0.0"
+    uuid: "npm:^14.0.0"
     vitest: "npm:^4.1.5"
   languageName: unknown
   linkType: soft
@@ -503,7 +503,7 @@ __metadata:
   resolution: "@heim/domain@workspace:packages/domain"
   dependencies:
     "@types/uuid": "npm:^11.0.0"
-    uuid: "npm:^13.0.0"
+    uuid: "npm:^14.0.0"
     vitest: "npm:^4.1.5"
   languageName: unknown
   linkType: soft
@@ -530,16 +530,16 @@ __metadata:
     "@heim/logging": "workspace:*"
     "@sentry/react": "npm:^10.47.0"
     "@sentry/vite-plugin": "npm:^5.3.0"
-    "@types/react": "npm:^19.0.0"
+    "@types/react": "npm:^19.2.17"
     "@types/react-dom": "npm:^19.0.0"
     "@types/uuid": "npm:^11.0.0"
     "@vitejs/plugin-react": "npm:^6.0.2"
-    mobx: "npm:^6.15.0"
+    mobx: "npm:^6.16.1"
     mobx-react-lite: "npm:^4.1.1"
-    react: "npm:^19.0.0"
-    react-dom: "npm:^19.0.0"
+    react: "npm:^19.2.7"
+    react-dom: "npm:^19.2.7"
     react-router: "npm:^7.14.0"
-    uuid: "npm:^13.0.0"
+    uuid: "npm:^14.0.0"
     vite: "npm:^8.0.0"
     vitest: "npm:^4.1.5"
   languageName: unknown
@@ -2200,12 +2200,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^19.0.0":
-  version: 19.2.14
-  resolution: "@types/react@npm:19.2.14"
+"@types/react@npm:^19.2.17":
+  version: 19.2.17
+  resolution: "@types/react@npm:19.2.17"
   dependencies:
     csstype: "npm:^3.2.2"
-  checksum: 10c0/7d25bf41b57719452d86d2ac0570b659210402707313a36ee612666bf11275a1c69824f8c3ee1fdca077ccfe15452f6da8f1224529b917050eb2d861e52b59b7
+  checksum: 10c0/bc2c4af96b3e480604424de70d5ebda90c5f4b485df471858c0bc2d7d70364b606ec3c4d8579f94f01aa0c6c0591f56bcf14cba5689f5eea4b74250ccdc3a232
   languageName: node
   linkType: hard
 
@@ -3536,9 +3536,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"google-auth-library@npm:^10.6.2":
-  version: 10.6.2
-  resolution: "google-auth-library@npm:10.6.2"
+"google-auth-library@npm:^10.7.0":
+  version: 10.7.0
+  resolution: "google-auth-library@npm:10.7.0"
   dependencies:
     base64-js: "npm:^1.3.0"
     ecdsa-sig-formatter: "npm:^1.0.11"
@@ -3546,7 +3546,7 @@ __metadata:
     gcp-metadata: "npm:8.1.2"
     google-logging-utils: "npm:1.1.3"
     jws: "npm:^4.0.0"
-  checksum: 10c0/4878d9070e751202eff8adca7a78a41f045c460f611a62d8c0c14ac4bd33d66afc5d788ef82225873dadc7cde401d47f223f3c109f1a192564164fdd44a36614
+  checksum: 10c0/e8827ff84a69bbd6573229d8245d8fbb8870304e255c213571541d039c33764a6f4a8d773c002a16d6d75e35b9a596310b5c6f8e25b189a02eb4cebd6f022321
   languageName: node
   linkType: hard
 
@@ -3620,10 +3620,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"helmet@npm:^8.1.0":
-  version: 8.1.0
-  resolution: "helmet@npm:8.1.0"
-  checksum: 10c0/94d3a7ebc88dbda1421635bdf33f00724adb5252269e93c5ab296ec0db11336d01265659ad3739ab1a1e881fb23a686ff7e788aac6a5fb929285134f157df763
+"helmet@npm:^8.2.0":
+  version: 8.2.0
+  resolution: "helmet@npm:8.2.0"
+  checksum: 10c0/3aff1bb04123866a573eaafd7df4a5dc21b649c8fe6b39e1fb0e586f7be35709bf6003d72eed35c8deefd74573dff47d19409943cf2816125cc9597a8205a882
   languageName: node
   linkType: hard
 
@@ -4456,10 +4456,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mobx@npm:^6.15.0":
-  version: 6.15.0
-  resolution: "mobx@npm:6.15.0"
-  checksum: 10c0/afbfdc5659caac4ba620d1caca8eb471bbe56746403a8023ae402e27f9e04856394e1529ccf46feb7fdad0c6d695fa1972e8421e7fbfcb1cf453131739a12ac4
+"mobx@npm:^6.16.1":
+  version: 6.16.1
+  resolution: "mobx@npm:6.16.1"
+  checksum: 10c0/8450dab51fa133c9dde9f6c9b42cdc9f16c70cf2b989acc25b2cf2c66948def053ad3f1fdfc3bc256ece394e607e9c15dbfe88792ffa81a041e2ec92ae268cdb
   languageName: node
   linkType: hard
 
@@ -5169,14 +5169,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-dom@npm:^19.0.0":
-  version: 19.2.4
-  resolution: "react-dom@npm:19.2.4"
+"react-dom@npm:^19.2.7":
+  version: 19.2.7
+  resolution: "react-dom@npm:19.2.7"
   dependencies:
     scheduler: "npm:^0.27.0"
   peerDependencies:
-    react: ^19.2.4
-  checksum: 10c0/f0c63f1794dedb154136d4d0f59af00b41907f4859571c155940296808f4b94bf9c0c20633db75b5b2112ec13d8d7dd4f9bf57362ed48782f317b11d05a44f35
+    react: ^19.2.7
+  checksum: 10c0/970ff600f6e80d47d39e2f226f12f226173b3cba3382efc97c5f0cd663de9af38c7a4c11c213fb936094faeac83060d660247accaa96b752180d5b951b9cfecb
   languageName: node
   linkType: hard
 
@@ -5196,10 +5196,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:^19.0.0":
-  version: 19.2.4
-  resolution: "react@npm:19.2.4"
-  checksum: 10c0/cd2c9ff67a720799cc3b38a516009986f7fc4cb8d3e15716c6211cf098d1357ee3e348ab05ad0600042bbb0fd888530ba92e329198c92eafa0994f5213396596
+"react@npm:^19.2.7":
+  version: 19.2.7
+  resolution: "react@npm:19.2.7"
+  checksum: 10c0/0bd0e2f1bbd4ba97561c6597bf8a5fec05e6476fe61e165c1065598d16668efc6715205599c94d3ddd49d36cb0f21cbf1b9bcc18ee840b805ce222c3e8d558ac
   languageName: node
   linkType: hard
 
@@ -5868,12 +5868,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuid@npm:*, uuid@npm:^13.0.0":
+"uuid@npm:*":
   version: 13.0.0
   resolution: "uuid@npm:13.0.0"
   bin:
     uuid: dist-node/bin/uuid
   checksum: 10c0/950e4c18d57fef6c69675344f5700a08af21e26b9eff2bf2180427564297368c538ea11ac9fb2e6528b17fc3966a9fd2c5049361b0b63c7d654f3c550c9b3d67
+  languageName: node
+  linkType: hard
+
+"uuid@npm:^14.0.0":
+  version: 14.0.0
+  resolution: "uuid@npm:14.0.0"
+  bin:
+    uuid: dist-node/bin/uuid
+  checksum: 10c0/a57ae7794c45005c1a9208989196c5baf79a7679c30f43c1bee9033a2c4d113a2cea216fa6fcc9663b08b0d55635df1a7c6eb7e7f3d21c3e50688c698fa39a50
   languageName: node
   linkType: hard
 
