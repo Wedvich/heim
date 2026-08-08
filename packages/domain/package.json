@@ -13,7 +13,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.1"
   },
   "devDependencies": {
     "@types/uuid": "^11.0.0",
